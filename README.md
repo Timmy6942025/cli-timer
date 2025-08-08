@@ -4,7 +4,9 @@ Simple timer and stopwatch you can run from anywhere.
 
 ## Install
 ```bash
-pip install git+https://github.com/Timmy6942025/cli-timer.git
+sudo apt update && sudo apt install pipx -y && pipx ensurepath && pipx install git+https://github.com/Timmy6942025/cli-timer
+
+
 Usage
 bash
 Copy
