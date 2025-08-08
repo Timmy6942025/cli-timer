@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import os
 import sys
@@ -93,16 +94,15 @@ class Stopwatch:
 
 def main():
     parser = argparse.ArgumentParser(description="A simple command-line timer and stopwatch.")
-    subparsers = parser.add_subparsers(dest="command")
 
-    timer_parser = subparsers.add_parser("timer")
-    timer_parser.add_argument("duration", nargs="+", help="e.g., 5 min 2 sec")
+    # Determine if invoked as 'timer' or 'stopwatch'
+    script_name = os.path.basename(sys.argv[0])
 
-    subparsers.add_parser("stopwatch")
+    if script_name == "timer":
+        parser.add_argument("duration", nargs="+", help="e.g., 5 min 2 sec")
+        args = parser.parse_args(sys.argv[1:]) # Parse arguments excluding the script name
+        args.command = "timer"
 
-    args = parser.parse_args()
-
-    if args.command == "timer":
         duration = 0
         for i in range(0, len(args.duration), 2):
             value = int(args.duration[i])
@@ -126,7 +126,10 @@ def main():
             elif key == "e" or key == "\x03":
                 timer.stop()
 
-    elif args.command == "stopwatch":
+    elif script_name == "stopwatch":
+        args = parser.parse_args(sys.argv[1:]) # No arguments expected for stopwatch
+        args.command = "stopwatch"
+
         stopwatch = Stopwatch()
         stopwatch.start()
 
@@ -138,6 +141,51 @@ def main():
                 stopwatch.restart()
             elif key == "e" or key == "\x03":
                 stopwatch.stop()
+
+    else:
+        # Fallback for direct execution or unknown invocation
+        subparsers = parser.add_subparsers(dest="command")
+        timer_parser = subparsers.add_parser("timer")
+        timer_parser.add_argument("duration", nargs="+", help="e.g., 5 min 2 sec")
+        subparsers.add_parser("stopwatch")
+        args = parser.parse_args()
+
+        if args.command == "timer":
+            duration = 0
+            for i in range(0, len(args.duration), 2):
+                value = int(args.duration[i])
+                unit = args.duration[i + 1]
+                if unit in ["hr", "hrs"]:
+                    duration += value * 3600
+                elif unit == "min":
+                    duration += value * 60
+                elif unit == "sec":
+                    duration += value
+
+            timer = Timer(duration)
+            timer.start()
+
+            while timer.running:
+                key = get_key()
+                if key == "p":
+                    timer.toggle_pause()
+                elif key == "r":
+                    timer.restart()
+                elif key == "e" or key == "\x03":
+                    timer.stop()
+
+        elif args.command == "stopwatch":
+            stopwatch = Stopwatch()
+            stopwatch.start()
+
+            while stopwatch.running:
+                key = get_key()
+                if key == "p":
+                    stopwatch.toggle_pause()
+                elif key == "r":
+                    stopwatch.restart()
+                elif key == "e" or key == "\x03":
+                    stopwatch.stop()
 
 
 if __name__ == "__main__":
