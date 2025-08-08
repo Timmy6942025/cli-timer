@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "cli-timer"
@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Simple CLI timer and stopwatch"
 readme = "README.md"
 requires-python = ">=3.6"
+dependencies = [
+    "rich",
+]
 
 [project.scripts]
 timer = "cli_timer.main:main"
