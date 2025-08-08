@@ -1,28 +1,41 @@
 import sys
-from .timer import run_timer
-from .stopwatch import run_stopwatch
+import cli_timer.timer
+import cli_timer.stopwatch
 
 def main():
-    if len(sys.argv) == 0:
-        print("Usage: timer <minutes> [seconds] or stopwatch")
-        return
+    command = sys.argv[0].split('/')[-1]
+    
+    if command == "timer":
+        parse_timer_args()
+    elif command == "stopwatch":
+        cli_timer.stopwatch.start_stopwatch()
+    else:
+        print("Unknown command. Use 'timer' or 'stopwatch'.")
 
-    prog = sys.argv[0]
-    if prog.endswith("timer"):
-        args = sys.argv[1:]
-        if not args:
-            print("Usage: timer <minutes> [seconds]")
-            return
-        # Convert args to seconds
-        total_seconds = 0
-        for arg in args:
-            if arg.isdigit():
-                total_seconds += int(arg) * 60 if "min" in args else int(arg)
-            elif arg.endswith("min"):
-                total_seconds += int(arg[:-3]) * 60
-            elif arg.endswith("sec"):
-                total_seconds += int(arg[:-3])
-        run_timer(total_seconds)
+def parse_timer_args():
+    if len(sys.argv) < 3:
+        print("Usage: timer <time> <unit>")
+        sys.exit(1)
 
-    elif prog.endswith("stopwatch"):
-        run_stopwatch()
+    try:
+        value = int(sys.argv[1])
+        unit = sys.argv[2].lower()
+    except (ValueError, IndexError):
+        print("Invalid time format. Use 'timer <number> <unit>'.")
+        sys.exit(1)
+
+    total_seconds = 0
+    if unit in ["s", "sec", "second", "seconds"]:
+        total_seconds = value
+    elif unit in ["m", "min", "minute", "minutes"]:
+        total_seconds = value * 60
+    elif unit in ["h", "hr", "hour", "hours"]:
+        total_seconds = value * 3600
+    else:
+        print("Invalid unit. Use 's', 'min', or 'hr'.")
+        sys.exit(1)
+    
+    cli_timer.timer.start_timer(total_seconds)
+
+if __name__ == "__main__":
+    main()
