@@ -1,6 +1,6 @@
 # CLI Timer
 
-A simple, easy-to-use command-line timer and stopwatch.
+A simple, easy-to-use command-line timer and stopwatch that runs in your terminal
 
 ## Installation
 
