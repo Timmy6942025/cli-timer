@@ -6,7 +6,7 @@ import termios
 import threading
 import time
 import tty
-
+from pyfiglet import Figlet, FigletFont
 
 def get_key():
     old_settings = termios.tcgetattr(sys.stdin)
@@ -21,12 +21,13 @@ def get_key():
 
 
 class Timer:
-    def __init__(self, duration):
+    def __init__(self, duration, font="standard"):
         self.duration = duration
         self.remaining = duration
         self.paused = False
         self.running = False
         self.thread = None
+        self.fig = Figlet(font=font)
 
     def start(self):
         self.running = True
@@ -44,9 +45,11 @@ class Timer:
             self.running = False
 
     def display(self):
+        os.system('clear')
         mins, secs = divmod(self.remaining, 60)
         hours, mins = divmod(mins, 60)
-        print(f"{hours:02d}:{mins:02d}:{secs:02d}", end="\r")
+        time_str = f"{hours:02d}:{mins:02d}:{secs:02d}"
+        print(self.fig.renderText(time_str), end="\r")
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -59,11 +62,12 @@ class Timer:
 
 
 class Stopwatch:
-    def __init__(self):
+    def __init__(self, font="standard"):
         self.elapsed = 0
         self.paused = False
         self.running = False
         self.thread = None
+        self.fig = Figlet(font=font)
 
     def start(self):
         self.running = True
@@ -78,9 +82,11 @@ class Stopwatch:
                 time.sleep(1)
 
     def display(self):
+        os.system('clear')
         mins, secs = divmod(self.elapsed, 60)
         hours, mins = divmod(mins, 60)
-        print(f"{hours:02d}:{mins:02d}:{secs:02d}", end="\r")
+        time_str = f"{hours:02d}:{mins:02d}:{secs:02d}"
+        print(self.fig.renderText(time_str), end="\r")
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -90,6 +96,14 @@ class Stopwatch:
 
     def stop(self):
         self.running = False
+
+
+def get_font():
+    try:
+        with open(os.path.expanduser("~/.cli-timer-font"), "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "standard"
 
 
 def main():
@@ -114,7 +128,7 @@ def main():
             elif unit == "sec":
                 duration += value
 
-        timer = Timer(duration)
+        timer = Timer(duration, font=get_font())
         timer.start()
 
         while timer.running:
@@ -130,7 +144,7 @@ def main():
         args = parser.parse_args(sys.argv[1:]) # No arguments expected for stopwatch
         args.command = "stopwatch"
 
-        stopwatch = Stopwatch()
+        stopwatch = Stopwatch(font=get_font())
         stopwatch.start()
 
         while stopwatch.running:
@@ -141,6 +155,22 @@ def main():
                 stopwatch.restart()
             elif key == "e" or key == "\x03":
                 stopwatch.stop()
+
+    elif script_name == "cli-timer-style":
+        parser.add_argument("font", nargs="?", help="The font to use.")
+        args = parser.parse_args(sys.argv[1:])
+
+        if args.font:
+            if args.font in FigletFont.getFonts():
+                with open(os.path.expanduser("~/.cli-timer-font"), "w") as f:
+                    f.write(args.font)
+                print(f"Font updated to {args.font} successfully!")
+            else:
+                print("Invalid font.")
+        else:
+            print("Available fonts:")
+            for font in FigletFont.getFonts():
+                print(font)
 
     else:
         # Fallback for direct execution or unknown invocation
@@ -162,7 +192,7 @@ def main():
                 elif unit == "sec":
                     duration += value
 
-            timer = Timer(duration)
+            timer = Timer(duration, font=get_font())
             timer.start()
 
             while timer.running:
@@ -175,7 +205,7 @@ def main():
                     timer.stop()
 
         elif args.command == "stopwatch":
-            stopwatch = Stopwatch()
+            stopwatch = Stopwatch(font=get_font())
             stopwatch.start()
 
             while stopwatch.running:
