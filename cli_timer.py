@@ -28,6 +28,7 @@ class Timer:
         self.running = False
         self.thread = None
         self.fig = Figlet(font=font)
+        self.lines = 0
 
     def start(self):
         self.running = True
@@ -45,11 +46,16 @@ class Timer:
             self.running = False
 
     def display(self):
-        os.system('clear')
+        if hasattr(self, 'lines') and self.lines > 0:
+            sys.stdout.write(f'\x1b[{self.lines}A')
+            sys.stdout.write('\r')
         mins, secs = divmod(self.remaining, 60)
         hours, mins = divmod(mins, 60)
         time_str = f"{hours:02d}:{mins:02d}:{secs:02d}"
-        print(self.fig.renderText(time_str), end="\r")
+        output = self.fig.renderText(time_str)
+        sys.stdout.write(output)
+        sys.stdout.flush()
+        self.lines = output.count('\n')
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -68,6 +74,7 @@ class Stopwatch:
         self.running = False
         self.thread = None
         self.fig = Figlet(font=font)
+        self.lines = 0
 
     def start(self):
         self.running = True
@@ -82,11 +89,16 @@ class Stopwatch:
                 time.sleep(1)
 
     def display(self):
-        os.system('clear')
+        if hasattr(self, 'lines') and self.lines > 0:
+            sys.stdout.write(f'\x1b[{self.lines}A')
+            sys.stdout.write('\r')
         mins, secs = divmod(self.elapsed, 60)
         hours, mins = divmod(mins, 60)
         time_str = f"{hours:02d}:{mins:02d}:{secs:02d}"
-        print(self.fig.renderText(time_str), end="\r")
+        output = self.fig.renderText(time_str)
+        sys.stdout.write(output)
+        sys.stdout.flush()
+        self.lines = output.count('\n')
 
     def toggle_pause(self):
         self.paused = not self.paused
