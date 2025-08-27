@@ -124,6 +124,29 @@ def main():
     # Determine if invoked as 'timer' or 'stopwatch'
     script_name = os.path.basename(sys.argv[0])
 
+    # Handle 'timer style' before normal 'timer' parsing so 'style' isn't
+    # interpreted as a duration value.
+    if script_name == "timer" and len(sys.argv) > 1 and sys.argv[1] == "style":
+        if len(sys.argv) == 2:
+            # Just 'timer style' - list fonts
+            print("Available fonts:")
+            for font in FigletFont.getFonts():
+                print(font)
+            return
+        elif len(sys.argv) == 3:
+            # 'timer style <font>' - set font
+            font = sys.argv[2]
+            if font in FigletFont.getFonts():
+                with open(os.path.expanduser("~/.cli-timer-font"), "w") as f:
+                    f.write(font)
+                print(f"Font updated to {font} successfully!")
+            else:
+                print("Invalid font.")
+            return
+        else:
+            print("Usage: timer style [font]")
+            return
+
     if script_name == "timer":
         parser.add_argument("duration", nargs="+", help="e.g., 5 min 2 sec")
         args = parser.parse_args(sys.argv[1:]) # Parse arguments excluding the script name
@@ -145,11 +168,11 @@ def main():
 
         while timer.running:
             key = get_key()
-            if key == "p":
+            if key == "p" or key == " ":
                 timer.toggle_pause()
             elif key == "r":
                 timer.restart()
-            elif key == "e" or key == "\x03":
+            elif key == "e" or key == "s" or key == "\x03":
                 timer.stop()
 
     elif script_name == "stopwatch":
@@ -161,28 +184,31 @@ def main():
 
         while stopwatch.running:
             key = get_key()
-            if key == "p":
+            if key == "p" or key == " ":
                 stopwatch.toggle_pause()
             elif key == "r":
                 stopwatch.restart()
-            elif key == "e" or key == "\x03":
+            elif key == "e" or key == "s" or key == "\x03":
                 stopwatch.stop()
 
-    elif script_name == "cli-timer-style":
-        parser.add_argument("font", nargs="?", help="The font to use.")
-        args = parser.parse_args(sys.argv[1:])
-
-        if args.font:
-            if args.font in FigletFont.getFonts():
-                with open(os.path.expanduser("~/.cli-timer-font"), "w") as f:
-                    f.write(args.font)
-                print(f"Font updated to {args.font} successfully!")
-            else:
-                print("Invalid font.")
-        else:
+    # Support 'timer style' and 'timer style <font>' commands
+    elif script_name == "timer" and len(sys.argv) > 1 and sys.argv[1] == "style":
+        if len(sys.argv) == 2:
+            # Just 'timer style' - list fonts
             print("Available fonts:")
             for font in FigletFont.getFonts():
                 print(font)
+        elif len(sys.argv) == 3:
+            # 'timer style <font>' - set font
+            font = sys.argv[2]
+            if font in FigletFont.getFonts():
+                with open(os.path.expanduser("~/.cli-timer-font"), "w") as f:
+                    f.write(font)
+                print(f"Font updated to {font} successfully!")
+            else:
+                print("Invalid font.")
+        else:
+            print("Usage: timer style [font]")
 
     else:
         # Fallback for direct execution or unknown invocation
@@ -209,11 +235,11 @@ def main():
 
             while timer.running:
                 key = get_key()
-                if key == "p":
+                if key == "p" or key == " ":
                     timer.toggle_pause()
                 elif key == "r":
                     timer.restart()
-                elif key == "e" or key == "\x03":
+                elif key == "e" or key == "s" or key == "\x03":
                     timer.stop()
 
         elif args.command == "stopwatch":
@@ -222,11 +248,11 @@ def main():
 
             while stopwatch.running:
                 key = get_key()
-                if key == "p":
+                if key == "p" or key == " ":
                     stopwatch.toggle_pause()
                 elif key == "r":
                     stopwatch.restart()
-                elif key == "e" or key == "\x03":
+                elif key == "e" or key == "s" or key == "\x03":
                     stopwatch.stop()
 
 
