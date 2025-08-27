@@ -48,7 +48,7 @@ timer 5 min 2 sec
 
 ## Font Styles
 
-You can view and set the ASCII font style used for the timer and stopwatch display.
+You can view and set the ASCII font style used for the timer and stopwatch display. There's LOTS but not all of them work
 
 - To list all available fonts:
 
