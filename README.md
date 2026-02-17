@@ -1,0 +1,117 @@
+# CLI Timer
+
+A simple and customizable, easy to setup/use timer and stopwatch that runs in your terminal.
+
+## Setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run directly from project root:
+
+```bash
+node bin/timer.js 5 min
+node bin/stopwatch.js
+```
+
+Or install globally from this folder:
+
+```bash
+npm link
+```
+
+Then use commands:
+
+```bash
+timer 5 min
+stopwatch
+```
+
+## Usage
+
+### Stopwatch
+
+To use the stopwatch, simply run the following command:
+
+```bash
+stopwatch
+```
+
+### Timer
+
+To use the timer, run the following command with the desired duration:
+
+```bash
+timer <number> <hr/hrs/min/sec> [<number> <hr/hrs/min/sec> ...]
+```
+
+For example:
+
+```bash
+timer 5 min 2 sec
+```
+
+By default, timer and stopwatch output is centered in the terminal.
+
+## Controls
+
+- `p` or `Spacebar`: Pause/Resume
+- `r`: Restart
+- `q`, `e` or `Ctrl+C`: Exit
+
+## Font Styles
+
+You can view and set the ASCII font style used for the timer and stopwatch display.
+
+To list all available fonts:
+
+```bash
+timer style
+```
+
+This is instant and lists all figlet fonts.
+
+To list only timer-compatible fonts (fonts that render `00:00:00` visibly):
+
+```bash
+timer style --compatible
+```
+
+To set your preferred font:
+
+```bash
+timer style <font>
+```
+
+Replace `<font>` with any font name from the list shown by `timer style`.
+
+## Settings UI
+
+Open interactive settings UI:
+
+```bash
+timer settings
+```
+
+This launches a Bubble Tea based screen where you can change:
+
+- Font
+- Center display
+- Show header
+- Show controls
+- Tick rate (50-1000 ms)
+- Completion message
+- Pause key / pause alt key
+- Restart key
+- Exit key / exit alt key
+
+Controls in settings UI:
+
+- `Enter`: select/toggle
+- `Ctrl+S`: save and exit
+- `/`: filter fonts in font picker
+- `/`: filter keys in key picker
+- `Esc`/`q`: back/cancel
