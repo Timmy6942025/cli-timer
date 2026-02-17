@@ -1,6 +1,6 @@
 {
-  "name": "cli-timer",
-  "version": "1.0.0",
+  "name": "@timmy6942025/cli-timer",
+  "version": "1.0.1",
   "description": "Simple customizable terminal timer and stopwatch",
   "main": "src/index.js",
   "bin": {
@@ -12,9 +12,12 @@
     "start": "node bin/timer.js 10 sec"
   },
   "keywords": [],
-  "author": "",
+  "author": "Timmy6942025 <timothy.thomas2011@hotmail.com>",
   "license": "ISC",
   "type": "commonjs",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "figlet": "^1.10.0"
   }
