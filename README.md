@@ -2,28 +2,17 @@
 
 A simple and customizable, easy to setup/use timer and stopwatch that runs in your terminal.
 
-## Setup
+## Install
 
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run directly from project root:
+Install globally (this is all you need):
 
 ```bash
-node bin/timer.js 5 min
-node bin/stopwatch.js
+npm i -g @timmy6942025/cli-timer
+# or
+bun add -g @timmy6942025/cli-timer
 ```
 
-Or install globally from this folder:
-
-```bash
-npm link
-```
-
-Then use commands:
+Then use commands anywhere:
 
 ```bash
 timer 5 min
