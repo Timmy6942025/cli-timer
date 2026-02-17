@@ -5,6 +5,7 @@ const { spawnSync } = require("child_process");
 const figlet = require("figlet");
 
 const PROJECT_ROOT = path.join(__dirname, "..");
+const PREBUILT_SETTINGS_UI_DIR = path.join(PROJECT_ROOT, "settings-ui", "prebuilt");
 const CONFIG_DIR = path.join(os.homedir(), ".cli-timer");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
@@ -645,11 +646,52 @@ function runSettingsUI() {
 
   ensureConfigDir();
 
-  const goVersion = spawnSync("go", ["version"], { stdio: "ignore" });
-  if (goVersion.error || goVersion.status !== 0) {
-    process.stderr.write("Go is required for `timer settings` (Bubble Tea UI).\n");
-    process.exitCode = 1;
-    return;
+  const platformMap = {
+    linux: "linux",
+    darwin: "darwin",
+    win32: "windows"
+  };
+  const archMap = {
+    x64: "x64",
+    arm64: "arm64"
+  };
+
+  function getSettingsBinaryTarget() {
+    const platform = platformMap[process.platform];
+    const arch = archMap[process.arch];
+    if (!platform || !arch) {
+      return null;
+    }
+    return `${platform}-${arch}`;
+  }
+
+  function getPrebuiltSettingsBinaryPath() {
+    const target = getSettingsBinaryTarget();
+    if (!target) {
+      return null;
+    }
+    const binaryName = process.platform === "win32" ? "cli-timer-settings-ui.exe" : "cli-timer-settings-ui";
+    const fullPath = path.join(PREBUILT_SETTINGS_UI_DIR, target, binaryName);
+    if (!fs.existsSync(fullPath)) {
+      return null;
+    }
+    return fullPath;
+  }
+
+  function hasGoToolchain() {
+    const goVersion = spawnSync("go", ["version"], { stdio: "ignore" });
+    return !(goVersion.error || goVersion.status !== 0);
+  }
+
+  function runPrebuiltSettingsUI(binaryPath) {
+    return spawnSync(binaryPath, ["--state", SETTINGS_STATE_PATH], { stdio: "inherit" });
+  }
+
+  function runGoSettingsUI() {
+    return spawnSync("go", ["run", ".", "--state", SETTINGS_STATE_PATH], {
+      cwd: path.join(PROJECT_ROOT, "settings-ui"),
+      stdio: "inherit"
+    });
   }
 
   const state = {
@@ -660,14 +702,37 @@ function runSettingsUI() {
 
   fs.writeFileSync(SETTINGS_STATE_PATH, JSON.stringify(state), "utf8");
 
-  const result = spawnSync("go", ["run", ".", "--state", SETTINGS_STATE_PATH], {
-    cwd: path.join(PROJECT_ROOT, "settings-ui"),
-    stdio: "inherit"
-  });
+  let result;
+  const prebuiltPath = getPrebuiltSettingsBinaryPath();
+  const canRunGo = hasGoToolchain();
+
+  if (prebuiltPath) {
+    result = runPrebuiltSettingsUI(prebuiltPath);
+    if (result.error && canRunGo) {
+      result = runGoSettingsUI();
+    }
+  } else if (canRunGo) {
+    result = runGoSettingsUI();
+  } else {
+    const target = getSettingsBinaryTarget();
+    if (target) {
+      process.stderr.write(`No prebuilt settings UI binary for ${target}, and Go is not installed.\n`);
+    } else {
+      process.stderr.write(
+        `No prebuilt settings UI binary for ${process.platform}/${process.arch}, and Go is not installed.\n`
+      );
+    }
+    process.stderr.write("Install Go or use a supported platform for `timer settings`.\n");
+    process.exitCode = 1;
+  }
 
   try {
     fs.unlinkSync(SETTINGS_STATE_PATH);
   } catch (_error) {
+  }
+
+  if (!result) {
+    return;
   }
 
   if (result.error) {

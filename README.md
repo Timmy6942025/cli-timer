@@ -96,6 +96,14 @@ Open interactive settings UI:
 timer settings
 ```
 
+`timer settings` ships with prebuilt Bubble Tea binaries for:
+
+- Linux x64 / arm64
+- macOS x64 / arm64
+- Windows x64 / arm64
+
+If your platform is unsupported, it falls back to running the Go source (`go run`) when Go is installed.
+
 This launches a Bubble Tea based screen where you can change:
 
 - Font
