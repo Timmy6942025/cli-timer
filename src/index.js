@@ -38,6 +38,7 @@ const DEFAULT_CONFIG = Object.freeze({
   showControls: true,
   tickRateMs: 100,
   completionMessage: "Time is up!",
+  notifyOnComplete: true,
   keybindings: { ...DEFAULT_KEYBINDINGS }
 });
 
@@ -201,6 +202,7 @@ function normalizeConfig(raw) {
     showControls: DEFAULT_CONFIG.showControls,
     tickRateMs: DEFAULT_CONFIG.tickRateMs,
     completionMessage: DEFAULT_CONFIG.completionMessage,
+    notifyOnComplete: DEFAULT_CONFIG.notifyOnComplete,
     keybindings: { ...DEFAULT_KEYBINDINGS }
   };
 
@@ -219,6 +221,9 @@ function normalizeConfig(raw) {
     }
     if (typeof raw.completionMessage === "string") {
       next.completionMessage = normalizeCompletionMessage(raw.completionMessage);
+    }
+    if (typeof raw.notifyOnComplete === "boolean") {
+      next.notifyOnComplete = raw.notifyOnComplete;
     }
     next.keybindings = normalizeKeybindings(raw.keybindings);
     if (typeof raw.font === "string") {
@@ -453,9 +458,135 @@ function drawFrame({ mode, seconds, paused, config, done }) {
   }
 }
 
+function escapeAppleScriptString(value) {
+  return String(value).replace(/\\/g, "\\\\").replace(/\"/g, "\\\"");
+}
+
+function escapePowerShellSingleQuotedString(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function spawnOk(command, args, options) {
+  try {
+    const result = spawnSync(command, args, { stdio: "ignore", ...options });
+    return !result.error && result.status === 0;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function sendSystemNotification({ title, message }) {
+  const safeTitle = String(title || "").trim() || "Timer";
+  const safeMessage = String(message || "").trim();
+
+  if (!safeMessage) {
+    return false;
+  }
+
+  try {
+    if (process.platform === "darwin") {
+      const script = `display notification "${escapeAppleScriptString(safeMessage)}" with title "${escapeAppleScriptString(safeTitle)}"`;
+      if (spawnOk("osascript", ["-e", script])) {
+        return true;
+      }
+      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage])) {
+        return true;
+      }
+      return false;
+    }
+
+    if (process.platform === "win32") {
+      const titlePs = escapePowerShellSingleQuotedString(safeTitle);
+      const messagePs = escapePowerShellSingleQuotedString(safeMessage);
+
+      const ps = [
+        "$ErrorActionPreference = 'Stop'",
+        "try {",
+        "  [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
+        "  $template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02",
+        "  $xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template)",
+        "  $txt = $xml.GetElementsByTagName('text')",
+        `  $txt.Item(0).AppendChild($xml.CreateTextNode('${titlePs}')) > $null`,
+        `  $txt.Item(1).AppendChild($xml.CreateTextNode('${messagePs}')) > $null`,
+        "  $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
+        "  $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cli-timer')",
+        "  $notifier.Show($toast)",
+        "} catch { exit 1 }"
+      ].join("; ");
+
+      const powershellArgs = ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Sta", "-Command", ps];
+      if (spawnOk("powershell", powershellArgs, { windowsHide: true })) {
+        return true;
+      }
+
+      const balloon = [
+        "$ErrorActionPreference = 'Stop'",
+        "try {",
+        "  Add-Type -AssemblyName System.Windows.Forms",
+        "  Add-Type -AssemblyName System.Drawing",
+        "  $notify = New-Object System.Windows.Forms.NotifyIcon",
+        "  $notify.Icon = [System.Drawing.SystemIcons]::Information",
+        `  $notify.BalloonTipTitle = '${titlePs}'`,
+        `  $notify.BalloonTipText = '${messagePs}'`,
+        "  $notify.Visible = $true",
+        "  $notify.ShowBalloonTip(5000)",
+        "  Start-Sleep -Milliseconds 5500",
+        "  $notify.Dispose()",
+        "} catch { exit 1 }"
+      ].join("; ");
+
+      const balloonArgs = [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Sta",
+        "-Command",
+        balloon
+      ];
+      return spawnOk("powershell", balloonArgs, { windowsHide: true });
+    }
+
+    if (process.platform === "linux") {
+      if (spawnOk("termux-notification", ["--title", safeTitle, "--content", safeMessage])) {
+        return true;
+      }
+      if (spawnOk("notify-send", [safeTitle, safeMessage])) {
+        return true;
+      }
+      if (spawnOk("kdialog", ["--title", safeTitle, "--passivepopup", safeMessage, "5"])) {
+        return true;
+      }
+      if (spawnOk("zenity", ["--notification", `--text=${safeTitle}: ${safeMessage}`])) {
+        return true;
+      }
+      return false;
+    }
+  } catch (_error) {
+  }
+
+  return false;
+}
+
+function notifyTimerFinished(config, initialSeconds) {
+  if (!config || !config.notifyOnComplete) {
+    return;
+  }
+  const message = config.completionMessage || "Time is up!";
+  const title = initialSeconds ? `Timer finished (${formatHms(initialSeconds)})` : "Timer finished";
+  const notified = sendSystemNotification({ title, message });
+  if (!notified) {
+    try {
+      process.stderr.write("\x07");
+    } catch (_error) {
+    }
+  }
+}
+
 function runNonInteractiveTimer(initialSeconds, tickRateMs) {
   const startedAt = Date.now();
   let lastSecond = null;
+  let notified = false;
 
   function printRemaining() {
     const elapsed = Math.floor((Date.now() - startedAt) / 1000);
@@ -476,6 +607,10 @@ function runNonInteractiveTimer(initialSeconds, tickRateMs) {
     const remaining = printRemaining();
     if (remaining <= 0) {
       clearInterval(interval);
+      if (!notified) {
+        notified = true;
+        notifyTimerFinished(readConfig(), initialSeconds);
+      }
     }
   }, tickRateMs);
 }
@@ -496,6 +631,7 @@ function runClock({ mode, initialSeconds, config }) {
 
   let paused = false;
   let done = false;
+  let didNotifyCompletion = false;
   const baseSeconds = initialSeconds;
   let anchorMs = Date.now();
   let elapsedWhilePaused = 0;
@@ -519,9 +655,13 @@ function runClock({ mode, initialSeconds, config }) {
   }
 
   function refreshDoneState(displaySeconds) {
-    if (isTimer && displaySeconds <= 0) {
+    if (isTimer && displaySeconds <= 0 && !done) {
       done = true;
       paused = true;
+      if (!didNotifyCompletion) {
+        didNotifyCompletion = true;
+        notifyTimerFinished(config, baseSeconds);
+      }
     }
   }
 
@@ -545,6 +685,7 @@ function runClock({ mode, initialSeconds, config }) {
   function restart() {
     paused = false;
     done = false;
+    didNotifyCompletion = false;
     elapsedWhilePaused = 0;
     anchorMs = Date.now();
     lastDrawState = "";
