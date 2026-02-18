@@ -12,6 +12,19 @@ const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
 const DEFAULT_FONT = "Standard";
 const TIMER_SAMPLE_TEXT = "01:23:45";
 const MIN_FIGLET_WIDTH = 120;
+const TIME_CHAR_FALLBACKS = Object.freeze({
+  "0": Object.freeze(["0", "O", "o", "Q", "D", "U", "X"]),
+  "1": Object.freeze(["1", "I", "l", "|", "!", "T", "X"]),
+  "2": Object.freeze(["2", "Z", "z", "S", "s", "X"]),
+  "3": Object.freeze(["3", "E", "e", "B", "b", "X"]),
+  "4": Object.freeze(["4", "A", "a", "H", "h", "X"]),
+  "5": Object.freeze(["5", "S", "s", "$", "X"]),
+  "6": Object.freeze(["6", "G", "g", "b", "X"]),
+  "7": Object.freeze(["7", "T", "t", "Y", "y", "X"]),
+  "8": Object.freeze(["8", "B", "b", "X"]),
+  "9": Object.freeze(["9", "g", "q", "P", "p", "X"]),
+  ":": Object.freeze([":", "|", "!", "i", "I", ".", ";", "X"])
+});
 
 const MIN_TICK_RATE_MS = 50;
 const MAX_TICK_RATE_MS = 1000;
@@ -48,6 +61,7 @@ const DEFAULT_CONFIG = Object.freeze({
 
 let allFontsCache = null;
 let compatibleFontsSlowCache = null;
+const glyphCache = new Map();
 
 function clearScreen() {
   process.stdout.write("\x1b[2J\x1b[H");
@@ -86,6 +100,21 @@ function hasVisibleGlyphs(text) {
   return typeof text === "string" && /[^\s]/.test(text);
 }
 
+function significantLines(text) {
+  const lines = toDisplayLines(text).map((line) => line.trim());
+  return lines.filter((line) => line.length > 0);
+}
+
+function isPlainTimerRender(rendered, timeText) {
+  const lines = significantLines(rendered);
+  return lines.length === 1 && lines[0] === String(timeText).trim();
+}
+
+function isPlainGlyphRender(rendered, token) {
+  const lines = significantLines(rendered);
+  return lines.length === 1 && lines[0] === String(token).trim();
+}
+
 function renderWithFont(text, fontName) {
   const width = Number.isFinite(process.stdout.columns)
     ? Math.max(MIN_FIGLET_WIDTH, Math.floor(process.stdout.columns))
@@ -104,8 +133,66 @@ function renderWithFont(text, fontName) {
   }
 }
 
+function glyphCacheKey(fontName, token) {
+  return `${fontName}\u0000${token}`;
+}
+
+function getRenderableGlyph(fontName, token) {
+  const cacheKey = glyphCacheKey(fontName, token);
+  if (glyphCache.has(cacheKey)) {
+    return glyphCache.get(cacheKey);
+  }
+
+  const options = TIME_CHAR_FALLBACKS[token] || [token];
+  for (const candidate of options) {
+    const rendered = renderWithFont(candidate, fontName);
+    if (hasVisibleGlyphs(rendered) && !isPlainGlyphRender(rendered, candidate)) {
+      const lines = toDisplayLines(rendered);
+      const width = lines.reduce((max, line) => Math.max(max, line.length), 0);
+      const glyph = { lines, width };
+      glyphCache.set(cacheKey, glyph);
+      return glyph;
+    }
+  }
+
+  glyphCache.set(cacheKey, null);
+  return null;
+}
+
+function renderTimeByGlyphs(timeText, fontName) {
+  const glyphs = [];
+  for (const token of String(timeText)) {
+    const preferred = getRenderableGlyph(fontName, token);
+    if (preferred) {
+      glyphs.push(preferred);
+      continue;
+    }
+
+    const fallback = getRenderableGlyph(DEFAULT_FONT, token);
+    if (!fallback) {
+      return "";
+    }
+    glyphs.push(fallback);
+  }
+
+  const maxHeight = glyphs.reduce((max, glyph) => Math.max(max, glyph.lines.length), 0);
+  const outputLines = [];
+  for (let row = 0; row < maxHeight; row += 1) {
+    const parts = glyphs.map((glyph) => {
+      const padTop = maxHeight - glyph.lines.length;
+      const sourceIndex = row - padTop;
+      const line = sourceIndex >= 0 ? glyph.lines[sourceIndex] || "" : "";
+      return line.padEnd(glyph.width, " ");
+    });
+    outputLines.push(parts.join(" ").replace(/\s+$/g, ""));
+  }
+
+  return `${outputLines.join("\n")}\n`;
+}
+
 function isTimerCompatibleFont(fontName) {
-  return hasVisibleGlyphs(renderWithFont(TIMER_SAMPLE_TEXT, fontName));
+  const rendered = renderWithFont(TIMER_SAMPLE_TEXT, fontName);
+  return hasVisibleGlyphs(rendered) && !isPlainTimerRender(rendered, TIMER_SAMPLE_TEXT);
 }
 
 function getTimerCompatibleFontsSlow() {
@@ -240,7 +327,7 @@ function normalizeConfig(raw) {
     next.keybindings = normalizeKeybindings(raw.keybindings);
     if (typeof raw.font === "string") {
       const normalizedFont = normalizeFontName(raw.font);
-      if (normalizedFont && isTimerCompatibleFont(normalizedFont)) {
+      if (normalizedFont) {
         next.font = normalizedFont;
       }
     }
@@ -283,9 +370,6 @@ function setFontInConfig(requestedFont) {
   const normalized = normalizeFontName(requestedFont);
   if (!normalized) {
     return { ok: false, reason: "unknown", font: null };
-  }
-  if (!isTimerCompatibleFont(normalized)) {
-    return { ok: false, reason: "incompatible", font: null };
   }
   const updated = updateConfig({ font: normalized });
   return { ok: true, reason: null, font: updated.font };
@@ -346,13 +430,23 @@ function parseDurationArgs(args) {
 
 function renderTimeAscii(timeText, fontName) {
   const preferred = renderWithFont(timeText, fontName);
-  if (hasVisibleGlyphs(preferred)) {
+  if (hasVisibleGlyphs(preferred) && !isPlainTimerRender(preferred, timeText)) {
     return preferred;
   }
 
+  const preferredByGlyph = renderTimeByGlyphs(timeText, fontName);
+  if (hasVisibleGlyphs(preferredByGlyph) && !isPlainTimerRender(preferredByGlyph, timeText)) {
+    return preferredByGlyph;
+  }
+
   const fallback = renderWithFont(timeText, DEFAULT_FONT);
-  if (hasVisibleGlyphs(fallback)) {
+  if (hasVisibleGlyphs(fallback) && !isPlainTimerRender(fallback, timeText)) {
     return fallback;
+  }
+
+  const fallbackByGlyph = renderTimeByGlyphs(timeText, DEFAULT_FONT);
+  if (hasVisibleGlyphs(fallbackByGlyph)) {
+    return fallbackByGlyph;
   }
 
   return `${timeText}\n`;
@@ -704,7 +798,7 @@ function playCompletionAlarm(config) {
     return;
   }
   try {
-    process.stderr.write("\x07\x07\x07");
+    process.stderr.write("\x07".repeat(5));
   } catch (_error) {
   }
 }
@@ -1096,13 +1190,8 @@ function runTimer(args) {
     const requestedFont = args.slice(1).join(" ");
     const result = setFontInConfig(requestedFont);
     if (!result.ok) {
-      if (result.reason === "incompatible") {
-        process.stderr.write(`Font is incompatible with timer digits: ${requestedFont}\n`);
-      } else {
-        process.stderr.write(`Unknown font: ${requestedFont}\n`);
-      }
+      process.stderr.write(`Unknown font: ${requestedFont}\n`);
       process.stderr.write("Run `timer style` to list fonts.\n");
-      process.stderr.write("Run `timer style --compatible` to list only compatible fonts.\n");
       process.exitCode = 1;
       return;
     }

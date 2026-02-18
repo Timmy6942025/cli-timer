@@ -76,6 +76,7 @@ timer style <font>
 ```
 
 Replace `<font>` with any font name from the list shown by `timer style`.
+If a font is missing native timer digits, CLI Timer now substitutes close glyphs so the display stays stylized instead of falling back to plain text.
 
 ## Settings UI
 
