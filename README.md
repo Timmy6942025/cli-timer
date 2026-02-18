@@ -101,6 +101,7 @@ This launches a Bubble Tea based screen where you can change:
 - Show controls
 - Tick rate (50-1000 ms)
 - Completion message
+- System notification on completion (default On)
 - Pause key / pause alt key
 - Restart key
 - Exit key / exit alt key
