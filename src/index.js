@@ -83,6 +83,30 @@ function showCursor() {
   process.stdout.write("\x1b[?25h");
 }
 
+function enterAlternateScreen() {
+  process.stdout.write("\x1b[?1049h");
+}
+
+function exitAlternateScreen() {
+  process.stdout.write("\x1b[?1049l");
+}
+
+function disableLineWrap() {
+  process.stdout.write("\x1b[?7l");
+}
+
+function enableLineWrap() {
+  process.stdout.write("\x1b[?7h");
+}
+
+function enableMouseCapture() {
+  process.stdout.write("\x1b[?1000h\x1b[?1006h");
+}
+
+function disableMouseCapture() {
+  process.stdout.write("\x1b[?1000l\x1b[?1006l");
+}
+
 function formatHms(totalSeconds) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -570,6 +594,13 @@ function toDisplayLines(text) {
   return lines.length > 0 ? lines : [""];
 }
 
+function writeFrameLines(lines) {
+  const safeLines = Array.isArray(lines) && lines.length > 0 ? lines : [""];
+  const terminalHeight = process.stdout.rows || safeLines.length;
+  const visibleLines = safeLines.slice(0, Math.max(1, terminalHeight));
+  process.stdout.write(visibleLines.join("\n"));
+}
+
 function writeCenteredBlock(lines) {
   const safeLines = lines.length > 0 ? lines : [""];
   const terminalWidth = process.stdout.columns || 120;
@@ -585,8 +616,7 @@ function writeCenteredBlock(lines) {
     output += "\n".repeat(padTop);
   }
   output += safeLines.map((line) => `${leftPrefix}${line}`).join("\n");
-  output += "\n";
-  process.stdout.write(output);
+  writeFrameLines(toDisplayLines(output));
 }
 
 function writeCenteredBlockWithTop(topLines, centerLines) {
@@ -609,8 +639,7 @@ function writeCenteredBlockWithTop(topLines, centerLines) {
     output += "\n".repeat(padTop);
   }
   output += safeCenter.map((line) => `${leftPrefix}${line}`).join("\n");
-  output += "\n";
-  process.stdout.write(output);
+  writeFrameLines(toDisplayLines(output));
 }
 
 function drawFrame({ mode, seconds, paused, config, done }) {
@@ -646,7 +675,7 @@ function drawFrame({ mode, seconds, paused, config, done }) {
     writeCenteredBlockWithTop(topLines, centerLines);
   } else {
     const lines = [...topLines, ...centerLines];
-    process.stdout.write(`${lines.join("\n")}\n`);
+    writeFrameLines(lines);
   }
 }
 
@@ -958,6 +987,9 @@ function runClock({ mode, initialSeconds, config }) {
   let tick = null;
   let lastDrawState = "";
   let hasExited = false;
+  let didEnterAlternateScreen = false;
+  let didDisableLineWrap = false;
+  let didEnableMouseCapture = false;
 
   const stdin = process.stdin;
 
@@ -1053,7 +1085,17 @@ function runClock({ mode, initialSeconds, config }) {
     }
     stdin.pause();
     showCursor();
-    clearScreen();
+    if (didEnableMouseCapture) {
+      disableMouseCapture();
+    }
+    if (didDisableLineWrap) {
+      enableLineWrap();
+    }
+    if (didEnterAlternateScreen) {
+      exitAlternateScreen();
+    } else {
+      clearScreen();
+    }
     process.exit(code);
   }
 
@@ -1112,6 +1154,12 @@ function runClock({ mode, initialSeconds, config }) {
   stdin.resume();
   stdin.setEncoding("utf8");
   stdin.on("data", onKeypress);
+  enterAlternateScreen();
+  didEnterAlternateScreen = true;
+  disableLineWrap();
+  didDisableLineWrap = true;
+  enableMouseCapture();
+  didEnableMouseCapture = true;
   hideCursor();
 
   draw(true);

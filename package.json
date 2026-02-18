@@ -1,6 +1,6 @@
 {
   "name": "@timmy6942025/cli-timer",
-  "version": "1.1.14",
+  "version": "1.1.16",
   "description": "Simple customizable terminal timer and stopwatch",
   "main": "src/index.js",
   "bin": {
