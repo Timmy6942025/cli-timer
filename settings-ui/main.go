@@ -45,6 +45,7 @@ type config struct {
 	ShowControls      bool        `json:"showControls"`
 	TickRateMs        int         `json:"tickRateMs"`
 	CompletionMessage string      `json:"completionMessage"`
+	NotifyOnComplete  bool        `json:"notifyOnComplete"`
 	Keybindings       keybindings `json:"keybindings"`
 }
 
@@ -149,6 +150,7 @@ func buildMenuItems(cfg config) []list.Item {
 		menuEntry{id: "controls", title: "Show controls", description: boolText(cfg.ShowControls)},
 		menuEntry{id: "tickRate", title: "Tick rate", description: fmt.Sprintf("%d ms", cfg.TickRateMs)},
 		menuEntry{id: "message", title: "Completion message", description: summarizeMessage(cfg.CompletionMessage)},
+		menuEntry{id: "notify", title: "System notification", description: boolText(cfg.NotifyOnComplete)},
 		menuEntry{id: "pauseKey", title: "Pause key", description: keyTokenLabel(cfg.Keybindings.PauseKey)},
 		menuEntry{id: "pauseAltKey", title: "Pause alt key", description: keyTokenLabel(cfg.Keybindings.PauseAltKey)},
 		menuEntry{id: "restartKey", title: "Restart key", description: keyTokenLabel(cfg.Keybindings.RestartKey)},
@@ -230,6 +232,7 @@ func normalizeConfig(cfg config) config {
 		ShowControls:      true,
 		TickRateMs:        defaultTickRateMs,
 		CompletionMessage: defaultCompletionMessage,
+		NotifyOnComplete:  true,
 		Keybindings:       defaultKeybindings,
 	}
 
@@ -245,6 +248,7 @@ func normalizeConfig(cfg config) config {
 	if cfg.CompletionMessage != "" {
 		result.CompletionMessage = normalizeCompletionMessage(cfg.CompletionMessage)
 	}
+	result.NotifyOnComplete = cfg.NotifyOnComplete
 	result.Keybindings = normalizeKeybindings(cfg.Keybindings)
 	return result
 }
@@ -453,6 +457,10 @@ func (m *model) applyMenuAction() tea.Cmd {
 		m.messageInput.CursorEnd()
 		m.messageInput.Focus()
 		m.screen = screenMessageEditor
+		return nil
+	case "notify":
+		m.payload.Config.NotifyOnComplete = !m.payload.Config.NotifyOnComplete
+		m.refreshMenu()
 		return nil
 	case "pauseKey":
 		m.openKeyPicker("pauseKey", "Select Pause Key")
