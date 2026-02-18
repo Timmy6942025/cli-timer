@@ -480,6 +480,21 @@ function spawnOk(command, args, options) {
   }
 }
 
+function terminalNotifierDelivered(groupId) {
+  try {
+    const listed = spawnSync("terminal-notifier", ["-list", groupId], { encoding: "utf8", stdio: "pipe" });
+    if (listed.error || listed.status !== 0) {
+      return false;
+    }
+    const output = String(listed.stdout || "");
+    return output.includes(groupId);
+  } catch (_error) {
+    return false;
+  } finally {
+    spawnOk("terminal-notifier", ["-remove", groupId]);
+  }
+}
+
 function sendSystemNotification({ title, message }) {
   const safeTitle = String(title || "").trim() || "Timer";
   const safeMessage = String(message || "").trim();
@@ -490,8 +505,11 @@ function sendSystemNotification({ title, message }) {
 
   try {
     if (process.platform === "darwin") {
-      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage])) {
-        return true;
+      const groupId = `cli-timer-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage, "-group", groupId])) {
+        if (terminalNotifierDelivered(groupId)) {
+          return true;
+        }
       }
       const script = `display notification "${escapeAppleScriptString(safeMessage)}" with title "${escapeAppleScriptString(safeTitle)}"`;
       if (spawnOk("osascript", ["-e", script])) {
