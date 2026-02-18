@@ -497,6 +497,56 @@ function sleepSync(ms) {
   }
 }
 
+function readProcessCommand(pid) {
+  try {
+    const result = spawnSync("ps", ["-p", String(pid), "-o", "comm="], { encoding: "utf8", stdio: "pipe" });
+    if (result.error || result.status !== 0) {
+      return "";
+    }
+    return String(result.stdout || "").trim();
+  } catch (_error) {
+    return "";
+  }
+}
+
+function resolveMacNotificationSenderCandidates() {
+  const candidates = [];
+  const explicit = String(process.env.CLI_TIMER_NOTIFICATION_SENDER || "").trim();
+  if (explicit) {
+    candidates.push(explicit);
+  }
+
+  const termProgram = String(process.env.TERM_PROGRAM || "").toLowerCase();
+  if (termProgram === "apple_terminal") {
+    candidates.push("com.apple.Terminal");
+  } else if (termProgram === "iterm.app") {
+    candidates.push("com.googlecode.iterm2");
+  } else if (termProgram === "vscode") {
+    candidates.push("com.microsoft.VSCode");
+  } else if (termProgram === "warpterminal" || termProgram === "warp") {
+    candidates.push("dev.warp.Warp-Stable");
+  }
+
+  const parentCommand = readProcessCommand(process.ppid).toLowerCase();
+  if (parentCommand.includes("terminal.app")) {
+    candidates.push("com.apple.Terminal");
+  }
+  if (parentCommand.includes("iterm")) {
+    candidates.push("com.googlecode.iterm2");
+  }
+  if (parentCommand.includes("warp")) {
+    candidates.push("dev.warp.Warp-Stable");
+  }
+  if (parentCommand.includes("visual studio code") || parentCommand.includes("vscode")) {
+    candidates.push("com.microsoft.VSCode");
+  }
+  if (parentCommand.includes("codex.app")) {
+    candidates.push("com.openai.codex");
+  }
+
+  return [...new Set(candidates)].filter(Boolean);
+}
+
 function terminalNotifierDelivered(groupId) {
   try {
     for (let attempt = 0; attempt < MAC_NOTIFICATION_VERIFY_ATTEMPTS; attempt += 1) {
@@ -514,8 +564,6 @@ function terminalNotifierDelivered(groupId) {
     return false;
   } catch (_error) {
     return false;
-  } finally {
-    spawnOk("terminal-notifier", ["-remove", groupId]);
   }
 }
 
@@ -529,12 +577,27 @@ function sendSystemNotification({ title, message }) {
 
   try {
     if (process.platform === "darwin") {
-      const groupId = `cli-timer-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
-      if (
-        spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage, "-group", groupId, "-ignoreDnD"])
-      ) {
-        if (terminalNotifierDelivered(groupId)) {
-          return true;
+      const senderCandidates = resolveMacNotificationSenderCandidates();
+      const senderArgsSets = senderCandidates.map((bundleId) => ["-sender", bundleId]);
+      senderArgsSets.push([]);
+
+      for (const senderArgs of senderArgsSets) {
+        const groupId = `cli-timer-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+        if (
+          spawnOk("terminal-notifier", [
+            "-title",
+            safeTitle,
+            "-message",
+            safeMessage,
+            "-group",
+            groupId,
+            "-ignoreDnD",
+            ...senderArgs
+          ])
+        ) {
+          if (terminalNotifierDelivered(groupId)) {
+            return true;
+          }
         }
       }
       const script = `display notification "${escapeAppleScriptString(safeMessage)}" with title "${escapeAppleScriptString(safeTitle)}"`;
