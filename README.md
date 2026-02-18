@@ -69,6 +69,12 @@ To list only timer-compatible fonts (fonts that render `01:23:45` visibly):
 timer style --compatible
 ```
 
+To set a random font:
+
+```bash
+timer style random
+```
+
 To set your preferred font:
 
 ```bash

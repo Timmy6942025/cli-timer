@@ -1198,6 +1198,7 @@ function printUsage() {
   process.stdout.write("  timer style\n");
   process.stdout.write("  timer style --all\n");
   process.stdout.write("  timer style --compatible\n");
+  process.stdout.write("  timer style random\n");
   process.stdout.write("  timer style <font>\n");
 }
 
@@ -1241,6 +1242,24 @@ function runTimer(args) {
       for (const font of fonts) {
         process.stdout.write(`${font}\n`);
       }
+      return;
+    }
+
+    if (args.length === 2 && args[1].toLowerCase() === "random") {
+      const fonts = getAllFonts();
+      if (fonts.length === 0) {
+        process.stderr.write("No fonts are available.\n");
+        process.exitCode = 1;
+        return;
+      }
+      const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+      const result = setFontInConfig(randomFont);
+      if (!result.ok) {
+        process.stderr.write(`Failed to set random font: ${randomFont}\n`);
+        process.exitCode = 1;
+        return;
+      }
+      process.stdout.write(`Random font set to: ${result.font}\n`);
       return;
     }
 
