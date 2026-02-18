@@ -114,3 +114,5 @@ Controls in settings UI:
 - `/`: filter fonts in font picker
 - `/`: filter keys in key picker
 - `Esc`/`q`: back/cancel
+
+Note for macOS: If system notifications are inconsistent with built-in AppleScript notifications, install `terminal-notifier` (`brew install terminal-notifier`) for improved reliability.

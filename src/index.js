@@ -490,11 +490,11 @@ function sendSystemNotification({ title, message }) {
 
   try {
     if (process.platform === "darwin") {
-      const script = `display notification "${escapeAppleScriptString(safeMessage)}" with title "${escapeAppleScriptString(safeTitle)}"`;
-      if (spawnOk("osascript", ["-e", script])) {
+      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage])) {
         return true;
       }
-      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage])) {
+      const script = `display notification "${escapeAppleScriptString(safeMessage)}" with title "${escapeAppleScriptString(safeTitle)}"`;
+      if (spawnOk("osascript", ["-e", script])) {
         return true;
       }
       return false;
