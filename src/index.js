@@ -611,26 +611,6 @@ function sendSystemNotification({ title, message }) {
       const titlePs = escapePowerShellSingleQuotedString(safeTitle);
       const messagePs = escapePowerShellSingleQuotedString(safeMessage);
 
-      const ps = [
-        "$ErrorActionPreference = 'Stop'",
-        "try {",
-        "  [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
-        "  $template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02",
-        "  $xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template)",
-        "  $txt = $xml.GetElementsByTagName('text')",
-        `  $txt.Item(0).AppendChild($xml.CreateTextNode('${titlePs}')) > $null`,
-        `  $txt.Item(1).AppendChild($xml.CreateTextNode('${messagePs}')) > $null`,
-        "  $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
-        "  $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cli-timer')",
-        "  $notifier.Show($toast)",
-        "} catch { exit 1 }"
-      ].join("; ");
-
-      const powershellArgs = ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Sta", "-Command", ps];
-      if (spawnOk("powershell", powershellArgs, { windowsHide: true })) {
-        return true;
-      }
-
       const balloon = [
         "$ErrorActionPreference = 'Stop'",
         "try {",
@@ -656,11 +636,45 @@ function sendSystemNotification({ title, message }) {
         "-Command",
         balloon
       ];
-      return spawnOk("powershell", balloonArgs, { windowsHide: true });
+      if (spawnOk("powershell", balloonArgs, { windowsHide: true })) {
+        return true;
+      }
+
+      const ps = [
+        "$ErrorActionPreference = 'Stop'",
+        "try {",
+        "  [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
+        "  $template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02",
+        "  $xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template)",
+        "  $txt = $xml.GetElementsByTagName('text')",
+        `  $txt.Item(0).AppendChild($xml.CreateTextNode('${titlePs}')) > $null`,
+        `  $txt.Item(1).AppendChild($xml.CreateTextNode('${messagePs}')) > $null`,
+        "  $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
+        "  $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cli-timer')",
+        "  $notifier.Show($toast)",
+        "} catch { exit 1 }"
+      ].join("; ");
+
+      const powershellArgs = ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Sta", "-Command", ps];
+      if (spawnOk("powershell", powershellArgs, { windowsHide: true })) {
+        return true;
+      }
+      return false;
     }
 
     if (process.platform === "linux") {
       if (spawnOk("termux-notification", ["--title", safeTitle, "--content", safeMessage])) {
+        return true;
+      }
+      if (
+        spawnOk("notify-send", [
+          "--app-name=cli-timer",
+          "--urgency=critical",
+          "--icon=dialog-information",
+          safeTitle,
+          safeMessage
+        ])
+      ) {
         return true;
       }
       if (spawnOk("notify-send", [safeTitle, safeMessage])) {

@@ -116,3 +116,7 @@ Controls in settings UI:
 - `Esc`/`q`: back/cancel
 
 Note for macOS: If system notifications are inconsistent with built-in AppleScript notifications, install `terminal-notifier` (`brew install terminal-notifier`) for improved reliability.
+
+Notification notes by platform:
+- Windows: notifications depend on OS notification permissions and whether your desktop session allows toasts/balloons.
+- Linux: notifications require a running desktop notification daemon (`notify-send` talks to that daemon over D-Bus).
