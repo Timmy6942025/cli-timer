@@ -14,6 +14,8 @@ const TIMER_SAMPLE_TEXT = "00:00:00";
 
 const MIN_TICK_RATE_MS = 50;
 const MAX_TICK_RATE_MS = 1000;
+const MAC_NOTIFICATION_VERIFY_ATTEMPTS = 8;
+const MAC_NOTIFICATION_VERIFY_DELAY_MS = 75;
 
 const DEFAULT_KEYBINDINGS = Object.freeze({
   pauseKey: "p",
@@ -480,14 +482,36 @@ function spawnOk(command, args, options) {
   }
 }
 
+function sleepSync(ms) {
+  const durationMs = Math.max(0, Number(ms) || 0);
+  if (durationMs <= 0) {
+    return;
+  }
+  try {
+    const waitArray = new Int32Array(new SharedArrayBuffer(4));
+    Atomics.wait(waitArray, 0, 0, durationMs);
+  } catch (_error) {
+    const started = Date.now();
+    while (Date.now() - started < durationMs) {
+    }
+  }
+}
+
 function terminalNotifierDelivered(groupId) {
   try {
-    const listed = spawnSync("terminal-notifier", ["-list", groupId], { encoding: "utf8", stdio: "pipe" });
-    if (listed.error || listed.status !== 0) {
-      return false;
+    for (let attempt = 0; attempt < MAC_NOTIFICATION_VERIFY_ATTEMPTS; attempt += 1) {
+      const listed = spawnSync("terminal-notifier", ["-list", groupId], { encoding: "utf8", stdio: "pipe" });
+      if (!listed.error && listed.status === 0) {
+        const output = String(listed.stdout || "");
+        if (output.includes(groupId)) {
+          return true;
+        }
+      }
+      if (attempt + 1 < MAC_NOTIFICATION_VERIFY_ATTEMPTS) {
+        sleepSync(MAC_NOTIFICATION_VERIFY_DELAY_MS);
+      }
     }
-    const output = String(listed.stdout || "");
-    return output.includes(groupId);
+    return false;
   } catch (_error) {
     return false;
   } finally {
@@ -506,7 +530,9 @@ function sendSystemNotification({ title, message }) {
   try {
     if (process.platform === "darwin") {
       const groupId = `cli-timer-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
-      if (spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage, "-group", groupId])) {
+      if (
+        spawnOk("terminal-notifier", ["-title", safeTitle, "-message", safeMessage, "-group", groupId, "-ignoreDnD"])
+      ) {
         if (terminalNotifierDelivered(groupId)) {
           return true;
         }
