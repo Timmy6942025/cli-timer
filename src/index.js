@@ -10,7 +10,8 @@ const CONFIG_DIR = path.join(os.homedir(), ".cli-timer");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
 const DEFAULT_FONT = "Standard";
-const TIMER_SAMPLE_TEXT = "00:00:00";
+const TIMER_SAMPLE_TEXT = "01:23:45";
+const MIN_FIGLET_WIDTH = 120;
 
 const MIN_TICK_RATE_MS = 50;
 const MAX_TICK_RATE_MS = 1000;
@@ -86,12 +87,16 @@ function hasVisibleGlyphs(text) {
 }
 
 function renderWithFont(text, fontName) {
+  const width = Number.isFinite(process.stdout.columns)
+    ? Math.max(MIN_FIGLET_WIDTH, Math.floor(process.stdout.columns))
+    : MIN_FIGLET_WIDTH;
+
   try {
     return figlet.textSync(text, {
       font: fontName,
       horizontalLayout: "fitted",
       verticalLayout: "default",
-      width: process.stdout.columns || 120,
+      width,
       whitespaceBreak: true
     });
   } catch (_error) {
@@ -973,7 +978,7 @@ function runSettingsUI() {
   const state = {
     configPath: CONFIG_PATH,
     config: readConfig(),
-    fonts: getAllFonts()
+    fonts: getTimerCompatibleFontsSlow()
   };
 
   fs.writeFileSync(SETTINGS_STATE_PATH, JSON.stringify(state), "utf8");
@@ -1040,7 +1045,7 @@ function printUsage() {
   process.stdout.write("  Keybindings are customizable in `timer settings`.\n\n");
   process.stdout.write("Font Styles\n");
   process.stdout.write("  timer style\n");
-  process.stdout.write("  timer style --compatible\n");
+  process.stdout.write("  timer style --all\n");
   process.stdout.write("  timer style <font>\n");
 }
 
@@ -1062,20 +1067,7 @@ function runTimer(args) {
   }
 
   if (args[0] === "style") {
-    if (args.length === 1 || (args.length === 2 && args[1] === "--all")) {
-      const currentFont = getFontFromConfig();
-      const fonts = getAllFonts();
-      process.stdout.write(`Current font: ${currentFont}\n\n`);
-      process.stdout.write("Available fonts:\n");
-      for (const font of fonts) {
-        process.stdout.write(`${font}\n`);
-      }
-      process.stdout.write("\nTip: Some fonts do not support timer digits.\n");
-      process.stdout.write("Use `timer style <font>` to validate and set safely.\n");
-      return;
-    }
-
-    if (args.length === 2 && args[1] === "--compatible") {
+    if (args.length === 1 || (args.length === 2 && args[1] === "--compatible")) {
       process.stdout.write("Checking font compatibility for timer digits...\n\n");
       const currentFont = getFontFromConfig();
       const fonts = getTimerCompatibleFontsSlow();
@@ -1084,6 +1076,20 @@ function runTimer(args) {
       for (const font of fonts) {
         process.stdout.write(`${font}\n`);
       }
+      process.stdout.write("\nUse `timer style --all` to list every figlet font.\n");
+      return;
+    }
+
+    if (args.length === 2 && args[1] === "--all") {
+      const currentFont = getFontFromConfig();
+      const fonts = getAllFonts();
+      process.stdout.write(`Current font: ${currentFont}\n\n`);
+      process.stdout.write("All fonts:\n");
+      for (const font of fonts) {
+        process.stdout.write(`${font}\n`);
+      }
+      process.stdout.write("\nSome fonts do not support timer digits.\n");
+      process.stdout.write("Use `timer style` for a safe compatible list.\n");
       return;
     }
 
