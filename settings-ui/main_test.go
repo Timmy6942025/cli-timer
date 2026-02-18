@@ -16,6 +16,7 @@ func testPayload() statePayload {
 			ShowControls:      true,
 			TickRateMs:        100,
 			CompletionMessage: "Time is up!",
+			NotifyOnComplete:  false,
 			Keybindings:       defaultKeybindings,
 		},
 		Fonts: []string{"Standard", "Big"},
