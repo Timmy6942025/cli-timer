@@ -49,7 +49,7 @@ By default, timer and stopwatch output is centered in the terminal.
 
 - `p` or `Spacebar`: Pause/Resume
 - `r`: Restart
-- `f`: Change style/font
+- `f`: Random style/font
 - `q`, `e` or `Ctrl+C`: Exit
 
 ## Font Styles

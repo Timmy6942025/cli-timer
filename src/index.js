@@ -436,6 +436,30 @@ function setFontInConfig(requestedFont) {
   return { ok: true, reason: null, font: updated.font };
 }
 
+function pickRandomFont(fonts, currentFont) {
+  if (!Array.isArray(fonts) || fonts.length === 0) {
+    return null;
+  }
+  if (fonts.length === 1) {
+    return fonts[0];
+  }
+
+  let candidate = currentFont;
+  for (let attempt = 0; attempt < 8 && candidate === currentFont; attempt += 1) {
+    candidate = fonts[Math.floor(Math.random() * fonts.length)];
+  }
+
+  if (candidate === currentFont) {
+    const currentIndex = fonts.findIndex((fontName) => fontName === currentFont);
+    if (currentIndex >= 0) {
+      return fonts[(currentIndex + 1) % fonts.length];
+    }
+    return fonts[0];
+  }
+
+  return candidate;
+}
+
 function parseDurationArgs(args) {
   if (args.length === 0 || args.length % 2 !== 0) {
     return { ok: false, error: "Duration must be in <number> <unit> pairs." };
@@ -525,7 +549,7 @@ function controlsHelpLine(keybindings) {
   const restart = keyTokenToLabel(keybindings.restartKey);
   const style = keyTokenToLabel(keybindings.styleKey);
   const exit = `${keyTokenToLabel(keybindings.exitKey)}/${keyTokenToLabel(keybindings.exitAltKey)}/Ctrl+C`;
-  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${style} Style | ${exit} Exit`;
+  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${style} Random Style | ${exit} Exit`;
 }
 
 function keyTokenFromInput(chunk) {
@@ -993,9 +1017,10 @@ function runClock({ mode, initialSeconds, config }) {
     if (fonts.length === 0) {
       return;
     }
-    const currentIndex = fonts.findIndex((fontName) => fontName === config.font);
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % fonts.length : 0;
-    const nextFont = fonts[nextIndex];
+    const nextFont = pickRandomFont(fonts, config.font);
+    if (!nextFont) {
+      return;
+    }
     const updated = setFontInConfig(nextFont);
     config.font = updated.ok ? updated.font : nextFont;
     lastDrawState = "";
@@ -1216,7 +1241,7 @@ function printUsage() {
   process.stdout.write("Settings\n");
   process.stdout.write("  timer settings\n\n");
   process.stdout.write("Controls\n");
-  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Style | q/e/Ctrl+C Exit\n");
+  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Random Style | q/e/Ctrl+C Exit\n");
   process.stdout.write("  Keybindings are customizable in `timer settings`.\n\n");
   process.stdout.write("Font Styles\n");
   process.stdout.write("  timer style\n");
@@ -1276,7 +1301,12 @@ function runTimer(args) {
         process.exitCode = 1;
         return;
       }
-      const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+      const randomFont = pickRandomFont(fonts, getFontFromConfig());
+      if (!randomFont) {
+        process.stderr.write("No fonts are available.\n");
+        process.exitCode = 1;
+        return;
+      }
       const result = setFontInConfig(randomFont);
       if (!result.ok) {
         process.stderr.write(`Failed to set random font: ${randomFont}\n`);
