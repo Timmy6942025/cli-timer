@@ -12,6 +12,9 @@ const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
 const DEFAULT_FONT = "Standard";
 const TIMER_SAMPLE_TEXT = "01:23:45";
 const MIN_FIGLET_WIDTH = 120;
+const PRINTABLE_ASCII_CANDIDATES = Object.freeze(
+  Array.from({ length: 94 }, (_, index) => String.fromCharCode(33 + index))
+);
 const TIME_CHAR_FALLBACKS = Object.freeze({
   "0": Object.freeze(["0", "O", "o", "Q", "D", "U", "X"]),
   "1": Object.freeze(["1", "I", "l", "|", "!", "T", "X"]),
@@ -25,6 +28,7 @@ const TIME_CHAR_FALLBACKS = Object.freeze({
   "9": Object.freeze(["9", "g", "q", "P", "p", "X"]),
   ":": Object.freeze([":", "|", "!", "i", "I", ".", ";", "X"])
 });
+const SYNTHETIC_FILL_CHARS = Object.freeze(["#", "@", "%", "&", "*", "+", "=", "~", "^", "$", "?"]);
 
 const MIN_TICK_RATE_MS = 50;
 const MAX_TICK_RATE_MS = 1000;
@@ -62,6 +66,8 @@ const DEFAULT_CONFIG = Object.freeze({
 let allFontsCache = null;
 let compatibleFontsSlowCache = null;
 const glyphCache = new Map();
+const tokenCandidatesCache = new Map();
+const syntheticFillCache = new Map();
 
 function clearScreen() {
   process.stdout.write("\x1b[2J\x1b[H");
@@ -137,19 +143,62 @@ function glyphCacheKey(fontName, token) {
   return `${fontName}\u0000${token}`;
 }
 
+function tokenCandidates(token) {
+  if (tokenCandidatesCache.has(token)) {
+    return tokenCandidatesCache.get(token);
+  }
+  const seeded = TIME_CHAR_FALLBACKS[token] || [token];
+  const all = [...new Set([...seeded, ...PRINTABLE_ASCII_CANDIDATES])];
+  tokenCandidatesCache.set(token, all);
+  return all;
+}
+
+function glyphFromRendered(rendered) {
+  const lines = toDisplayLines(rendered);
+  const width = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  return { lines, width };
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (const ch of String(value)) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function syntheticFillCharForFont(fontName) {
+  if (syntheticFillCache.has(fontName)) {
+    return syntheticFillCache.get(fontName);
+  }
+  const fill = SYNTHETIC_FILL_CHARS[hashString(fontName) % SYNTHETIC_FILL_CHARS.length];
+  syntheticFillCache.set(fontName, fill);
+  return fill;
+}
+
+function synthesizeGlyph(fontName, token) {
+  const baseline = getRenderableGlyph(DEFAULT_FONT, token);
+  if (!baseline) {
+    return null;
+  }
+  const fill = syntheticFillCharForFont(fontName);
+  const lines = baseline.lines.map((line) => line.replace(/[^\s]/g, fill));
+  const width = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  return { lines, width };
+}
+
 function getRenderableGlyph(fontName, token) {
   const cacheKey = glyphCacheKey(fontName, token);
   if (glyphCache.has(cacheKey)) {
     return glyphCache.get(cacheKey);
   }
 
-  const options = TIME_CHAR_FALLBACKS[token] || [token];
+  const options = tokenCandidates(token);
   for (const candidate of options) {
     const rendered = renderWithFont(candidate, fontName);
     if (hasVisibleGlyphs(rendered) && !isPlainGlyphRender(rendered, candidate)) {
-      const lines = toDisplayLines(rendered);
-      const width = lines.reduce((max, line) => Math.max(max, line.length), 0);
-      const glyph = { lines, width };
+      const glyph = glyphFromRendered(rendered);
       glyphCache.set(cacheKey, glyph);
       return glyph;
     }
@@ -166,6 +215,14 @@ function renderTimeByGlyphs(timeText, fontName) {
     if (preferred) {
       glyphs.push(preferred);
       continue;
+    }
+
+    if (fontName !== DEFAULT_FONT) {
+      const synthesized = synthesizeGlyph(fontName, token);
+      if (synthesized) {
+        glyphs.push(synthesized);
+        continue;
+      }
     }
 
     const fallback = getRenderableGlyph(DEFAULT_FONT, token);
