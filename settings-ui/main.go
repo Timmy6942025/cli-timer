@@ -39,14 +39,15 @@ var defaultKeybindings = keybindings{
 }
 
 type config struct {
-	Font              string      `json:"font"`
-	CenterDisplay     bool        `json:"centerDisplay"`
-	ShowHeader        bool        `json:"showHeader"`
-	ShowControls      bool        `json:"showControls"`
-	TickRateMs        int         `json:"tickRateMs"`
-	CompletionMessage string      `json:"completionMessage"`
-	NotifyOnComplete  bool        `json:"notifyOnComplete"`
-	Keybindings       keybindings `json:"keybindings"`
+	Font                string      `json:"font"`
+	CenterDisplay       bool        `json:"centerDisplay"`
+	ShowHeader          bool        `json:"showHeader"`
+	ShowControls        bool        `json:"showControls"`
+	TickRateMs          int         `json:"tickRateMs"`
+	CompletionMessage   string      `json:"completionMessage"`
+	NotifyOnComplete    bool        `json:"notifyOnComplete"`
+	PlaySoundOnComplete bool        `json:"playSoundOnComplete"`
+	Keybindings         keybindings `json:"keybindings"`
 }
 
 type statePayload struct {
@@ -151,6 +152,7 @@ func buildMenuItems(cfg config) []list.Item {
 		menuEntry{id: "tickRate", title: "Tick rate", description: fmt.Sprintf("%d ms", cfg.TickRateMs)},
 		menuEntry{id: "message", title: "Completion message", description: summarizeMessage(cfg.CompletionMessage)},
 		menuEntry{id: "notify", title: "System notification", description: boolText(cfg.NotifyOnComplete)},
+		menuEntry{id: "sound", title: "Completion sound/alarm", description: boolText(cfg.PlaySoundOnComplete)},
 		menuEntry{id: "pauseKey", title: "Pause key", description: keyTokenLabel(cfg.Keybindings.PauseKey)},
 		menuEntry{id: "pauseAltKey", title: "Pause alt key", description: keyTokenLabel(cfg.Keybindings.PauseAltKey)},
 		menuEntry{id: "restartKey", title: "Restart key", description: keyTokenLabel(cfg.Keybindings.RestartKey)},
@@ -226,14 +228,15 @@ func normalizeKeybindings(cfg keybindings) keybindings {
 
 func normalizeConfig(cfg config) config {
 	result := config{
-		Font:              defaultFont,
-		CenterDisplay:     true,
-		ShowHeader:        true,
-		ShowControls:      true,
-		TickRateMs:        defaultTickRateMs,
-		CompletionMessage: defaultCompletionMessage,
-		NotifyOnComplete:  true,
-		Keybindings:       defaultKeybindings,
+		Font:                defaultFont,
+		CenterDisplay:       true,
+		ShowHeader:          true,
+		ShowControls:        true,
+		TickRateMs:          defaultTickRateMs,
+		CompletionMessage:   defaultCompletionMessage,
+		NotifyOnComplete:    true,
+		PlaySoundOnComplete: false,
+		Keybindings:         defaultKeybindings,
 	}
 
 	if strings.TrimSpace(cfg.Font) != "" {
@@ -249,6 +252,7 @@ func normalizeConfig(cfg config) config {
 		result.CompletionMessage = normalizeCompletionMessage(cfg.CompletionMessage)
 	}
 	result.NotifyOnComplete = cfg.NotifyOnComplete
+	result.PlaySoundOnComplete = cfg.PlaySoundOnComplete
 	result.Keybindings = normalizeKeybindings(cfg.Keybindings)
 	return result
 }
@@ -460,6 +464,10 @@ func (m *model) applyMenuAction() tea.Cmd {
 		return nil
 	case "notify":
 		m.payload.Config.NotifyOnComplete = !m.payload.Config.NotifyOnComplete
+		m.refreshMenu()
+		return nil
+	case "sound":
+		m.payload.Config.PlaySoundOnComplete = !m.payload.Config.PlaySoundOnComplete
 		m.refreshMenu()
 		return nil
 	case "pauseKey":

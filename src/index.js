@@ -39,6 +39,7 @@ const DEFAULT_CONFIG = Object.freeze({
   tickRateMs: 100,
   completionMessage: "Time is up!",
   notifyOnComplete: true,
+  playSoundOnComplete: false,
   keybindings: { ...DEFAULT_KEYBINDINGS }
 });
 
@@ -203,6 +204,7 @@ function normalizeConfig(raw) {
     tickRateMs: DEFAULT_CONFIG.tickRateMs,
     completionMessage: DEFAULT_CONFIG.completionMessage,
     notifyOnComplete: DEFAULT_CONFIG.notifyOnComplete,
+    playSoundOnComplete: DEFAULT_CONFIG.playSoundOnComplete,
     keybindings: { ...DEFAULT_KEYBINDINGS }
   };
 
@@ -224,6 +226,9 @@ function normalizeConfig(raw) {
     }
     if (typeof raw.notifyOnComplete === "boolean") {
       next.notifyOnComplete = raw.notifyOnComplete;
+    }
+    if (typeof raw.playSoundOnComplete === "boolean") {
+      next.playSoundOnComplete = raw.playSoundOnComplete;
     }
     next.keybindings = normalizeKeybindings(raw.keybindings);
     if (typeof raw.font === "string") {
@@ -568,19 +573,28 @@ function sendSystemNotification({ title, message }) {
   return false;
 }
 
-function notifyTimerFinished(config, initialSeconds) {
-  if (!config || !config.notifyOnComplete) {
+function playCompletionAlarm(config) {
+  if (!config || !config.playSoundOnComplete) {
     return;
   }
-  const message = config.completionMessage || "Time is up!";
-  const title = initialSeconds ? `Timer finished (${formatHms(initialSeconds)})` : "Timer finished";
-  const notified = sendSystemNotification({ title, message });
-  if (!notified) {
-    try {
-      process.stderr.write("\x07");
-    } catch (_error) {
-    }
+  try {
+    process.stderr.write("\x07\x07\x07");
+  } catch (_error) {
   }
+}
+
+function notifyTimerFinished(config, initialSeconds) {
+  if (!config) {
+    return;
+  }
+
+  if (config.notifyOnComplete) {
+    const message = config.completionMessage || "Time is up!";
+    const title = initialSeconds ? `Timer finished (${formatHms(initialSeconds)})` : "Timer finished";
+    sendSystemNotification({ title, message });
+  }
+
+  playCompletionAlarm(config);
 }
 
 function runNonInteractiveTimer(initialSeconds, tickRateMs) {

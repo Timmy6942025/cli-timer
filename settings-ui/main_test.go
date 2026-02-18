@@ -10,14 +10,15 @@ func testPayload() statePayload {
 	return statePayload{
 		ConfigPath: "/tmp/cli-timer-test-config.json",
 		Config: config{
-			Font:              "Standard",
-			CenterDisplay:     true,
-			ShowHeader:        true,
-			ShowControls:      true,
-			TickRateMs:        100,
-			CompletionMessage: "Time is up!",
-			NotifyOnComplete:  false,
-			Keybindings:       defaultKeybindings,
+			Font:                "Standard",
+			CenterDisplay:       true,
+			ShowHeader:          true,
+			ShowControls:        true,
+			TickRateMs:          100,
+			CompletionMessage:   "Time is up!",
+			NotifyOnComplete:    false,
+			PlaySoundOnComplete: false,
+			Keybindings:         defaultKeybindings,
 		},
 		Fonts: []string{"Standard", "Big"},
 	}
