@@ -55,16 +55,18 @@ By default, timer and stopwatch output is centered in the terminal.
 
 You can view and set the ASCII font style used for the timer and stopwatch display.
 
-To list timer-compatible fonts (recommended):
+To list all available fonts:
 
 ```bash
 timer style
 ```
 
-To list every figlet font:
+This is instant and lists all figlet fonts.
+
+To list only timer-compatible fonts (fonts that render `01:23:45` visibly):
 
 ```bash
-timer style --all
+timer style --compatible
 ```
 
 To set your preferred font:
@@ -104,8 +106,6 @@ This launches a Bubble Tea based screen where you can change:
 - Pause key / pause alt key
 - Restart key
 - Exit key / exit alt key
-
-The settings UI font picker now shows timer-compatible fonts only.
 
 Controls in settings UI:
 

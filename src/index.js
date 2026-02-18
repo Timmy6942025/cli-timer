@@ -978,7 +978,7 @@ function runSettingsUI() {
   const state = {
     configPath: CONFIG_PATH,
     config: readConfig(),
-    fonts: getTimerCompatibleFontsSlow()
+    fonts: getAllFonts()
   };
 
   fs.writeFileSync(SETTINGS_STATE_PATH, JSON.stringify(state), "utf8");
@@ -1046,6 +1046,7 @@ function printUsage() {
   process.stdout.write("Font Styles\n");
   process.stdout.write("  timer style\n");
   process.stdout.write("  timer style --all\n");
+  process.stdout.write("  timer style --compatible\n");
   process.stdout.write("  timer style <font>\n");
 }
 
@@ -1067,7 +1068,20 @@ function runTimer(args) {
   }
 
   if (args[0] === "style") {
-    if (args.length === 1 || (args.length === 2 && args[1] === "--compatible")) {
+    if (args.length === 1 || (args.length === 2 && args[1] === "--all")) {
+      const currentFont = getFontFromConfig();
+      const fonts = getAllFonts();
+      process.stdout.write(`Current font: ${currentFont}\n\n`);
+      process.stdout.write("Available fonts:\n");
+      for (const font of fonts) {
+        process.stdout.write(`${font}\n`);
+      }
+      process.stdout.write("\nTip: Some fonts do not support timer digits.\n");
+      process.stdout.write("Use `timer style <font>` to validate and set safely.\n");
+      return;
+    }
+
+    if (args.length === 2 && args[1] === "--compatible") {
       process.stdout.write("Checking font compatibility for timer digits...\n\n");
       const currentFont = getFontFromConfig();
       const fonts = getTimerCompatibleFontsSlow();
@@ -1076,20 +1090,6 @@ function runTimer(args) {
       for (const font of fonts) {
         process.stdout.write(`${font}\n`);
       }
-      process.stdout.write("\nUse `timer style --all` to list every figlet font.\n");
-      return;
-    }
-
-    if (args.length === 2 && args[1] === "--all") {
-      const currentFont = getFontFromConfig();
-      const fonts = getAllFonts();
-      process.stdout.write(`Current font: ${currentFont}\n\n`);
-      process.stdout.write("All fonts:\n");
-      for (const font of fonts) {
-        process.stdout.write(`${font}\n`);
-      }
-      process.stdout.write("\nSome fonts do not support timer digits.\n");
-      process.stdout.write("Use `timer style` for a safe compatible list.\n");
       return;
     }
 
