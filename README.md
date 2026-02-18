@@ -62,6 +62,7 @@ timer style
 ```
 
 This is instant and lists all figlet fonts.
+`timer style --all` is supported as an explicit alias.
 
 To list only timer-compatible fonts (fonts that render `01:23:45` visibly):
 
@@ -113,6 +114,8 @@ This launches a Bubble Tea based screen where you can change:
 - Pause key / pause alt key
 - Restart key
 - Exit key / exit alt key
+
+When completion sound/alarm is enabled, it plays 5 terminal bell beeps.
 
 Controls in settings UI:
 
