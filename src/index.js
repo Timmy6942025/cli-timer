@@ -39,6 +39,7 @@ const DEFAULT_KEYBINDINGS = Object.freeze({
   pauseKey: "p",
   pauseAltKey: "space",
   restartKey: "r",
+  styleKey: "f",
   exitKey: "q",
   exitAltKey: "e"
 });
@@ -47,6 +48,7 @@ const LEGACY_DEFAULT_KEYBINDINGS = Object.freeze({
   pauseKey: "p",
   pauseAltKey: "space",
   restartKey: "r",
+  styleKey: "f",
   exitKey: "s",
   exitAltKey: "e"
 });
@@ -324,6 +326,7 @@ function normalizeKeybindings(raw) {
   next.pauseKey = normalizeKeyToken(raw.pauseKey, next.pauseKey);
   next.pauseAltKey = normalizeKeyToken(raw.pauseAltKey, next.pauseAltKey);
   next.restartKey = normalizeKeyToken(raw.restartKey, next.restartKey);
+  next.styleKey = normalizeKeyToken(raw.styleKey, next.styleKey);
   next.exitKey = normalizeKeyToken(raw.exitKey, next.exitKey);
   next.exitAltKey = normalizeKeyToken(raw.exitAltKey, next.exitAltKey);
 
@@ -331,6 +334,7 @@ function normalizeKeybindings(raw) {
     next.pauseKey === LEGACY_DEFAULT_KEYBINDINGS.pauseKey &&
     next.pauseAltKey === LEGACY_DEFAULT_KEYBINDINGS.pauseAltKey &&
     next.restartKey === LEGACY_DEFAULT_KEYBINDINGS.restartKey &&
+    next.styleKey === LEGACY_DEFAULT_KEYBINDINGS.styleKey &&
     next.exitKey === LEGACY_DEFAULT_KEYBINDINGS.exitKey &&
     next.exitAltKey === LEGACY_DEFAULT_KEYBINDINGS.exitAltKey
   ) {
@@ -519,8 +523,9 @@ function keyTokenToLabel(token) {
 function controlsHelpLine(keybindings) {
   const pause = `${keyTokenToLabel(keybindings.pauseKey)}/${keyTokenToLabel(keybindings.pauseAltKey)}`;
   const restart = keyTokenToLabel(keybindings.restartKey);
+  const style = keyTokenToLabel(keybindings.styleKey);
   const exit = `${keyTokenToLabel(keybindings.exitKey)}/${keyTokenToLabel(keybindings.exitAltKey)}/Ctrl+C`;
-  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${exit} Exit`;
+  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${style} Style | ${exit} Exit`;
 }
 
 function keyTokenFromInput(chunk) {
@@ -983,6 +988,20 @@ function runClock({ mode, initialSeconds, config }) {
     draw(true);
   }
 
+  function cycleStyle() {
+    const fonts = getAllFonts();
+    if (fonts.length === 0) {
+      return;
+    }
+    const currentIndex = fonts.findIndex((fontName) => fontName === config.font);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % fonts.length : 0;
+    const nextFont = fonts[nextIndex];
+    const updated = setFontInConfig(nextFont);
+    config.font = updated.ok ? updated.font : nextFont;
+    lastDrawState = "";
+    draw(true);
+  }
+
   function onSignal() {
     cleanupAndExit(0);
   }
@@ -1045,6 +1064,11 @@ function runClock({ mode, initialSeconds, config }) {
 
     if (token === config.keybindings.restartKey) {
       restart();
+      return;
+    }
+
+    if (token === config.keybindings.styleKey) {
+      cycleStyle();
       return;
     }
 
@@ -1192,7 +1216,7 @@ function printUsage() {
   process.stdout.write("Settings\n");
   process.stdout.write("  timer settings\n\n");
   process.stdout.write("Controls\n");
-  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | q/e/Ctrl+C Exit\n");
+  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Style | q/e/Ctrl+C Exit\n");
   process.stdout.write("  Keybindings are customizable in `timer settings`.\n\n");
   process.stdout.write("Font Styles\n");
   process.stdout.write("  timer style\n");

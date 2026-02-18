@@ -26,6 +26,7 @@ type keybindings struct {
 	PauseKey    string `json:"pauseKey"`
 	PauseAltKey string `json:"pauseAltKey"`
 	RestartKey  string `json:"restartKey"`
+	StyleKey    string `json:"styleKey"`
 	ExitKey     string `json:"exitKey"`
 	ExitAltKey  string `json:"exitAltKey"`
 }
@@ -34,6 +35,7 @@ var defaultKeybindings = keybindings{
 	PauseKey:    "p",
 	PauseAltKey: "space",
 	RestartKey:  "r",
+	StyleKey:    "f",
 	ExitKey:     "q",
 	ExitAltKey:  "e",
 }
@@ -156,6 +158,7 @@ func buildMenuItems(cfg config) []list.Item {
 		menuEntry{id: "pauseKey", title: "Pause key", description: keyTokenLabel(cfg.Keybindings.PauseKey)},
 		menuEntry{id: "pauseAltKey", title: "Pause alt key", description: keyTokenLabel(cfg.Keybindings.PauseAltKey)},
 		menuEntry{id: "restartKey", title: "Restart key", description: keyTokenLabel(cfg.Keybindings.RestartKey)},
+		menuEntry{id: "styleKey", title: "Style key", description: keyTokenLabel(cfg.Keybindings.StyleKey)},
 		menuEntry{id: "exitKey", title: "Exit key", description: keyTokenLabel(cfg.Keybindings.ExitKey)},
 		menuEntry{id: "exitAltKey", title: "Exit alt key", description: keyTokenLabel(cfg.Keybindings.ExitAltKey)},
 		menuEntry{id: "save", title: "Save and exit", description: "Write settings and close"},
@@ -221,6 +224,7 @@ func normalizeKeybindings(cfg keybindings) keybindings {
 	result.PauseKey = normalizeKeyToken(cfg.PauseKey, result.PauseKey)
 	result.PauseAltKey = normalizeKeyToken(cfg.PauseAltKey, result.PauseAltKey)
 	result.RestartKey = normalizeKeyToken(cfg.RestartKey, result.RestartKey)
+	result.StyleKey = normalizeKeyToken(cfg.StyleKey, result.StyleKey)
 	result.ExitKey = normalizeKeyToken(cfg.ExitKey, result.ExitKey)
 	result.ExitAltKey = normalizeKeyToken(cfg.ExitAltKey, result.ExitAltKey)
 	return result
@@ -379,6 +383,8 @@ func (m *model) keyTokenForTarget(target string) string {
 		return m.payload.Config.Keybindings.PauseAltKey
 	case "restartKey":
 		return m.payload.Config.Keybindings.RestartKey
+	case "styleKey":
+		return m.payload.Config.Keybindings.StyleKey
 	case "exitKey":
 		return m.payload.Config.Keybindings.ExitKey
 	case "exitAltKey":
@@ -396,6 +402,8 @@ func (m *model) setKeyTokenForTarget(target string, token string) {
 		m.payload.Config.Keybindings.PauseAltKey = token
 	case "restartKey":
 		m.payload.Config.Keybindings.RestartKey = token
+	case "styleKey":
+		m.payload.Config.Keybindings.StyleKey = token
 	case "exitKey":
 		m.payload.Config.Keybindings.ExitKey = token
 	case "exitAltKey":
@@ -478,6 +486,9 @@ func (m *model) applyMenuAction() tea.Cmd {
 		return nil
 	case "restartKey":
 		m.openKeyPicker("restartKey", "Select Restart Key")
+		return nil
+	case "styleKey":
+		m.openKeyPicker("styleKey", "Select Style Key")
 		return nil
 	case "exitKey":
 		m.openKeyPicker("exitKey", "Select Exit Key")

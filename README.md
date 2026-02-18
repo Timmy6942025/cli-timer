@@ -49,6 +49,7 @@ By default, timer and stopwatch output is centered in the terminal.
 
 - `p` or `Spacebar`: Pause/Resume
 - `r`: Restart
+- `f`: Change style/font
 - `q`, `e` or `Ctrl+C`: Exit
 
 ## Font Styles
@@ -113,6 +114,7 @@ This launches a Bubble Tea based screen where you can change:
 - Completion sound/alarm on completion (default Off)
 - Pause key / pause alt key
 - Restart key
+- Style key
 - Exit key / exit alt key
 
 When completion sound/alarm is enabled, it plays 5 terminal bell beeps.
