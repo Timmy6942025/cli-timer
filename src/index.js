@@ -12,6 +12,7 @@ const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
 const DEFAULT_FONT = "Standard";
 const TIMER_SAMPLE_TEXT = "01:23:45";
 const MIN_FIGLET_WIDTH = 120;
+const PACKAGE_NAME = "@timmy6942025/cli-timer";
 const PRINTABLE_ASCII_CANDIDATES = Object.freeze(
   Array.from({ length: 94 }, (_, index) => String.fromCharCode(33 + index))
 );
@@ -696,6 +697,147 @@ function spawnOk(command, args, options) {
   }
 }
 
+function readCurrentPackageVersion() {
+  try {
+    const packagePath = path.join(PROJECT_ROOT, "package.json");
+    const text = fs.readFileSync(packagePath, "utf8");
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed.version !== "string") {
+      return null;
+    }
+    return parsed.version.trim() || null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function readLatestPublishedVersion() {
+  try {
+    const result = spawnSync("npm", ["view", PACKAGE_NAME, "version", "--registry=https://registry.npmjs.org"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    if (result.error || result.status !== 0) {
+      return null;
+    }
+    const version = String(result.stdout || "").trim();
+    return version || null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function detectInstallMethod() {
+  try {
+    const realRoot = fs.realpathSync(PROJECT_ROOT).replace(/\\/g, "/").toLowerCase();
+    if (realRoot.includes("/.bun/install/global/node_modules/")) {
+      return "bun";
+    }
+    if (
+      realRoot.includes("/.local/share/pnpm/global/") ||
+      realRoot.includes("/pnpm/global/") ||
+      realRoot.includes("/.pnpm/")
+    ) {
+      return "pnpm";
+    }
+    if (realRoot.includes("/node_modules/")) {
+      return "npm";
+    }
+  } catch (_error) {
+  }
+
+  const userAgent = String(process.env.npm_config_user_agent || "").toLowerCase();
+  if (userAgent.startsWith("bun/")) {
+    return "bun";
+  }
+  if (userAgent.startsWith("pnpm/")) {
+    return "pnpm";
+  }
+  if (userAgent.startsWith("npm/")) {
+    return "npm";
+  }
+
+  return "npm";
+}
+
+function getUpdateCommand(method) {
+  const packageTarget = `${PACKAGE_NAME}@latest`;
+  if (method === "bun") {
+    return {
+      command: "bun",
+      args: ["add", "-g", packageTarget],
+      printable: `bun add -g ${packageTarget}`
+    };
+  }
+  if (method === "pnpm") {
+    return {
+      command: "pnpm",
+      args: ["add", "-g", packageTarget],
+      printable: `pnpm add -g ${packageTarget}`
+    };
+  }
+  return {
+    command: "npm",
+    args: ["i", "-g", packageTarget],
+    printable: `npm i -g ${packageTarget}`
+  };
+}
+
+function runSelfUpdate() {
+  const method = detectInstallMethod();
+  const updateCommand = getUpdateCommand(method);
+  const beforeVersion = readCurrentPackageVersion();
+  const latestVersion = readLatestPublishedVersion();
+
+  process.stdout.write(`Detected install method: ${method}\n`);
+  if (beforeVersion) {
+    process.stdout.write(`Current version: ${beforeVersion}\n`);
+  }
+  if (latestVersion) {
+    process.stdout.write(`Latest version: ${latestVersion}\n`);
+  }
+  process.stdout.write(`Running: ${updateCommand.printable}\n\n`);
+
+  let result;
+  try {
+    result = spawnSync(updateCommand.command, updateCommand.args, { stdio: "inherit" });
+  } catch (error) {
+    process.stderr.write(`Failed to run updater: ${error.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (result.error || result.status !== 0) {
+    process.stderr.write(`Update command failed: ${updateCommand.printable}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const installedAfter = readCurrentPackageVersion();
+  const latestAfter = readLatestPublishedVersion();
+
+  process.stdout.write("\nUpdate finished.\n");
+  if (installedAfter) {
+    process.stdout.write(`Installed version: ${installedAfter}\n`);
+  }
+  if (latestAfter) {
+    process.stdout.write(`Latest version: ${latestAfter}\n`);
+  }
+
+  if (installedAfter && latestAfter && installedAfter === latestAfter) {
+    process.stdout.write("You are on the latest version.\n");
+    return;
+  }
+
+  if (latestAfter) {
+    process.stderr.write("Update completed, but this running install is not on the latest version yet.\n");
+    process.exitCode = 1;
+    return;
+  }
+
+  process.stdout.write("Could not verify latest version from npm, but update command completed.\n");
+}
+
 function sleepSync(ms) {
   const durationMs = Math.max(0, Number(ms) || 0);
   if (durationMs <= 0) {
@@ -1288,6 +1430,8 @@ function printUsage() {
   process.stdout.write("  Example: timer 5 min 2 sec\n\n");
   process.stdout.write("Settings\n");
   process.stdout.write("  timer settings\n\n");
+  process.stdout.write("Update\n");
+  process.stdout.write("  timer update\n\n");
   process.stdout.write("Controls\n");
   process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Random Style | q/e/Ctrl+C Exit\n");
   process.stdout.write("  Keybindings are customizable in `timer settings`.\n\n");
@@ -1313,6 +1457,11 @@ function runTimer(args) {
 
   if (args[0] === "settings") {
     runSettingsUI();
+    return;
+  }
+
+  if (args[0] === "update") {
+    runSelfUpdate();
     return;
   }
 

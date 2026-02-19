@@ -45,6 +45,16 @@ timer 5 min 2 sec
 
 By default, timer and stopwatch output is centered in the terminal.
 
+### Update CLI Timer
+
+To update globally and verify you are on latest:
+
+```bash
+timer update
+```
+
+`timer update` auto-detects whether your current install came from Bun, npm, or pnpm, runs the matching global update command, then checks your installed version against npm `latest`.
+
 ## Controls
 
 - `p` or `Spacebar`: Pause/Resume
