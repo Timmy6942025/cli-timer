@@ -1,6 +1,6 @@
 # CLI Timer
 
-A simple and customizable, easy to setup/use timer and stopwatch that runs in your terminal.
+A dead simple and customizable, easy to setup/use timer and stopwatch that runs in your terminal.
 
 ## Install
 
