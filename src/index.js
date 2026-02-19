@@ -1,6 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 const figlet = require("figlet");
 
@@ -469,20 +470,27 @@ function pickRandomFont(fonts, currentFont) {
     return fonts[0];
   }
 
-  let candidate = currentFont;
-  for (let attempt = 0; attempt < 8 && candidate === currentFont; attempt += 1) {
-    candidate = fonts[Math.floor(Math.random() * fonts.length)];
-  }
-
-  if (candidate === currentFont) {
-    const currentIndex = fonts.findIndex((fontName) => fontName === currentFont);
-    if (currentIndex >= 0) {
-      return fonts[(currentIndex + 1) % fonts.length];
+  const randomIndex = (maxExclusive) => {
+    const max = Math.floor(maxExclusive);
+    if (!Number.isFinite(max) || max <= 0) {
+      return 0;
     }
-    return fonts[0];
+    if (typeof crypto.randomInt === "function") {
+      try {
+        return crypto.randomInt(0, max);
+      } catch (_error) {
+      }
+    }
+    return Math.floor(Math.random() * max);
+  };
+
+  const currentIndex = fonts.findIndex((fontName) => fontName === currentFont);
+  if (currentIndex < 0) {
+    return fonts[randomIndex(fonts.length)];
   }
 
-  return candidate;
+  const offset = 1 + randomIndex(fonts.length - 1);
+  return fonts[(currentIndex + offset) % fonts.length];
 }
 
 function parseDurationArgs(args) {
