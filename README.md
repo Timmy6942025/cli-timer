@@ -7,9 +7,9 @@ A dead simple and customizable, easy to setup/use timer and stopwatch that runs 
 Install globally (this is all you need):
 
 ```bash
-npm i -g @timmy6942025/cli-timer
+npm i -g bash-timer
 # or
-bun add -g @timmy6942025/cli-timer
+bun add -g bash-timer
 ```
 
 Then use commands anywhere:
