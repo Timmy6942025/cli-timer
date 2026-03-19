@@ -41,7 +41,7 @@ const DEFAULT_KEYBINDINGS = Object.freeze({
   pauseKey: "p",
   pauseAltKey: "space",
   restartKey: "r",
-  styleKey: "f",
+  fontKey: "f",
   exitKey: "q",
   exitAltKey: "e"
 });
@@ -50,7 +50,7 @@ const LEGACY_DEFAULT_KEYBINDINGS = Object.freeze({
   pauseKey: "p",
   pauseAltKey: "space",
   restartKey: "r",
-  styleKey: "f",
+  fontKey: "f",
   exitKey: "s",
   exitAltKey: "e"
 });
@@ -352,7 +352,7 @@ function normalizeKeybindings(raw) {
   next.pauseKey = normalizeKeyToken(raw.pauseKey, next.pauseKey);
   next.pauseAltKey = normalizeKeyToken(raw.pauseAltKey, next.pauseAltKey);
   next.restartKey = normalizeKeyToken(raw.restartKey, next.restartKey);
-  next.styleKey = normalizeKeyToken(raw.styleKey, next.styleKey);
+  next.fontKey = normalizeKeyToken(raw.fontKey || raw.styleKey, next.fontKey);
   next.exitKey = normalizeKeyToken(raw.exitKey, next.exitKey);
   next.exitAltKey = normalizeKeyToken(raw.exitAltKey, next.exitAltKey);
 
@@ -360,7 +360,7 @@ function normalizeKeybindings(raw) {
     next.pauseKey === LEGACY_DEFAULT_KEYBINDINGS.pauseKey &&
     next.pauseAltKey === LEGACY_DEFAULT_KEYBINDINGS.pauseAltKey &&
     next.restartKey === LEGACY_DEFAULT_KEYBINDINGS.restartKey &&
-    next.styleKey === LEGACY_DEFAULT_KEYBINDINGS.styleKey &&
+    next.fontKey === LEGACY_DEFAULT_KEYBINDINGS.fontKey &&
     next.exitKey === LEGACY_DEFAULT_KEYBINDINGS.exitKey &&
     next.exitAltKey === LEGACY_DEFAULT_KEYBINDINGS.exitAltKey
   ) {
@@ -580,9 +580,9 @@ function keyTokenToLabel(token) {
 function controlsHelpLine(keybindings) {
   const pause = `${keyTokenToLabel(keybindings.pauseKey)}/${keyTokenToLabel(keybindings.pauseAltKey)}`;
   const restart = keyTokenToLabel(keybindings.restartKey);
-  const style = keyTokenToLabel(keybindings.styleKey);
+  const font = keyTokenToLabel(keybindings.fontKey);
   const exit = `${keyTokenToLabel(keybindings.exitKey)}/${keyTokenToLabel(keybindings.exitAltKey)}/Ctrl+C`;
-  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${style} Random Style | ${exit} Exit`;
+  return `Controls: ${pause} Pause-Resume | ${restart} Restart | ${font} Random Font | ${exit} Exit`;
 }
 
 function keyTokenFromInput(chunk) {
@@ -1284,7 +1284,7 @@ function runClock({ mode, initialSeconds, config }) {
       return;
     }
 
-    if (token === config.keybindings.styleKey) {
+    if (token === config.keybindings.fontKey) {
       cycleStyle();
       return;
     }
@@ -1441,14 +1441,14 @@ function printUsage() {
   process.stdout.write("Update\n");
   process.stdout.write("  timer update\n\n");
   process.stdout.write("Controls\n");
-  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Random Style | q/e/Ctrl+C Exit\n");
+  process.stdout.write("  Defaults: p/Space Pause-Resume | r Restart | f Random Font | q/e/Ctrl+C Exit\n");
   process.stdout.write("  Keybindings are customizable in `timer settings`.\n\n");
-  process.stdout.write("Font Styles\n");
-  process.stdout.write("  timer style\n");
-  process.stdout.write("  timer style --all\n");
-  process.stdout.write("  timer style --compatible\n");
-  process.stdout.write("  timer style random\n");
-  process.stdout.write("  timer style <font>\n");
+  process.stdout.write("Fonts\n");
+  process.stdout.write("  timer font\n");
+  process.stdout.write("  timer font --all\n");
+  process.stdout.write("  timer font --compatible\n");
+  process.stdout.write("  timer font random\n");
+  process.stdout.write("  timer font <font>\n");
 }
 
 function runStopwatch() {
@@ -1473,7 +1473,7 @@ function runTimer(args) {
     return;
   }
 
-  if (args[0] === "style") {
+  if (args[0] === "font") {
     if (args.length === 1 || (args.length === 2 && args[1] === "--all")) {
       const currentFont = getFontFromConfig();
       const fonts = getAllFonts();
@@ -1483,7 +1483,7 @@ function runTimer(args) {
         process.stdout.write(`${font}\n`);
       }
       process.stdout.write("\nTip: Some fonts do not support timer digits.\n");
-      process.stdout.write("Use `timer style <font>` to validate and set safely.\n");
+      process.stdout.write("Use `timer font <font>` to validate and set safely.\n");
       return;
     }
 
@@ -1526,7 +1526,7 @@ function runTimer(args) {
     const result = setFontInConfig(requestedFont);
     if (!result.ok) {
       process.stderr.write(`Unknown font: ${requestedFont}\n`);
-      process.stderr.write("Run `timer style` to list fonts.\n");
+      process.stderr.write("Run `timer font` to list fonts.\n");
       process.exitCode = 1;
       return;
     }

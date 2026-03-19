@@ -59,41 +59,41 @@ timer update
 
 - `p` or `Spacebar`: Pause/Resume
 - `r`: Restart
-- `f`: Random style/font
+- `f`: Random font
 - `q`, `e` or `Ctrl+C`: Exit
 
-## Font Styles
+## Fonts
 
-You can view and set the ASCII font style used for the timer and stopwatch display.
+You can view and set the ASCII font used for the timer and stopwatch display.
 
 To list all available fonts:
 
 ```bash
-timer style
+timer font
 ```
 
 This is instant and lists all figlet fonts.
-`timer style --all` is supported as an explicit alias.
+`timer font --all` is supported as an explicit alias.
 
 To list only timer-compatible fonts (fonts that render `01:23:45` visibly):
 
 ```bash
-timer style --compatible
+timer font --compatible
 ```
 
 To set a random font:
 
 ```bash
-timer style random
+timer font random
 ```
 
 To set your preferred font:
 
 ```bash
-timer style <font>
+timer font <font>
 ```
 
-Replace `<font>` with any font name from the list shown by `timer style`.
+Replace `<font>` with any font name from the list shown by `timer font`.
 If a font is missing native timer digits, CLI Timer now substitutes close glyphs so the display stays stylized instead of falling back to plain text.
 
 ## Settings UI
@@ -124,7 +124,7 @@ This launches a Bubble Tea based screen where you can change:
 - Completion sound/alarm on completion (default Off)
 - Pause key / pause alt key
 - Restart key
-- Style key
+- Font key
 - Exit key / exit alt key
 
 When completion sound/alarm is enabled, it plays 5 terminal bell beeps.
