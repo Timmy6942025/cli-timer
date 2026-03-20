@@ -13,7 +13,7 @@ const SETTINGS_STATE_PATH = path.join(CONFIG_DIR, "settings-state.json");
 const DEFAULT_FONT = "Standard";
 const TIMER_SAMPLE_TEXT = "01:23:45";
 const MIN_FIGLET_WIDTH = 120;
-const PACKAGE_NAME = "@timmy6942025/cli-timer";
+const PACKAGE_NAME = "bash-timer";
 const PRINTABLE_ASCII_CANDIDATES = Object.freeze(
   Array.from({ length: 94 }, (_, index) => String.fromCharCode(33 + index))
 );
